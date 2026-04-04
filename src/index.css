@@ -1,0 +1,7 @@
+#semantic-visualizer .react-flow__node {
+  cursor: pointer;
+}
+
+#semantic-visualizer .react-flow__edge-textbg {
+  rx: 3;
+}

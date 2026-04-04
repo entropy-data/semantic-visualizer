@@ -1,0 +1,46 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "entity",
+      "data": {
+        "label": "Customer",
+        "link": "#",
+        "properties": [
+          { "name": "customer_id", "type": "string", "primaryKey": true },
+          { "name": "name", "type": "string" },
+          { "name": "email", "type": "string" }
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "type": "entity",
+      "data": {
+        "label": "Order",
+        "link": "#",
+        "properties": [
+          { "name": "order_id", "type": "string", "primaryKey": true },
+          { "name": "order_date", "type": "date" },
+          { "name": "total", "type": "decimal" }
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "type": "metric",
+      "data": {
+        "label": "Revenue",
+        "link": "#",
+        "properties": [
+          { "name": "amount", "type": "decimal" },
+          { "name": "period", "type": "string" }
+        ]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "1", "target": "2", "label": "places", "type": "relatedTo" },
+    { "id": "e2", "source": "2", "target": "3", "label": "measures", "type": "relatedTo" }
+  ]
+}
