@@ -1,7 +1,42 @@
 #semantic-visualizer .react-flow__node {
-  cursor: pointer;
+  cursor: grab;
+}
+
+#semantic-visualizer .react-flow__node:active {
+  cursor: grabbing;
+}
+
+#semantic-visualizer .react-flow__node.selected {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 #semantic-visualizer .react-flow__edge-textbg {
-  rx: 3;
+  rx: 4;
+}
+
+/* Match opensemantic-editor edge hover/select styles */
+#semantic-visualizer .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #888 !important;
+  stroke-width: 3px !important;
+}
+
+#semantic-visualizer .react-flow__edge-path {
+  cursor: pointer;
+}
+
+#semantic-visualizer .react-flow__edge:hover .react-flow__edge-path {
+  stroke: #888 !important;
+  stroke-width: 2.5px !important;
+}
+
+#semantic-visualizer .react-flow__controls-button {
+  width: 24px;
+  height: 24px;
+}
+
+#semantic-visualizer .react-flow__controls-button svg {
+  max-width: 12px;
+  max-height: 12px;
 }
