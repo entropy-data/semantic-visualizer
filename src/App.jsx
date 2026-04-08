@@ -337,7 +337,7 @@ export default function App({ graphData, customHeight, layout }) {
                 onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
                 title="Show properties on concept and metric nodes"
               >
-                Properties
+                Show Properties
               </button>
             )}
             <button
