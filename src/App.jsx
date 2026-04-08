@@ -135,6 +135,78 @@ function layoutElements(nodes, edges, { entityMode = false } = {}) {
   return { nodes: layoutedNodes, edges };
 }
 
+function treeLayout(nodes, edges) {
+  // For isA edges: source = child, target = parent.
+  // Build a top-down tree with parents above children.
+  const childrenOf = {}; // parentId -> [childId]
+  const parentOf = {};   // childId -> parentId
+  edges.forEach((e) => {
+    if (!childrenOf[e.target]) childrenOf[e.target] = [];
+    childrenOf[e.target].push(e.source);
+    parentOf[e.source] = e.target;
+  });
+
+  // Find roots (nodes that are not children of anyone)
+  const roots = nodes.filter((n) => !parentOf[n.id]).map((n) => n.id);
+  // If no roots found (cycle), fall back to first node
+  if (roots.length === 0 && nodes.length > 0) roots.push(nodes[0].id);
+
+  // BFS to assign depth levels and horizontal positions
+  const depth = {};
+  const order = [];
+  const visited = new Set();
+  const queue = roots.map((id) => ({ id, level: 0 }));
+  roots.forEach((id) => visited.add(id));
+
+  while (queue.length > 0) {
+    const { id, level } = queue.shift();
+    depth[id] = level;
+    order.push(id);
+    const children = childrenOf[id] || [];
+    children.forEach((childId) => {
+      if (!visited.has(childId)) {
+        visited.add(childId);
+        queue.push({ id: childId, level: level + 1 });
+      }
+    });
+  }
+
+  // Include any unvisited nodes (disconnected)
+  nodes.forEach((n) => {
+    if (!visited.has(n.id)) {
+      depth[n.id] = 0;
+      order.push(n.id);
+    }
+  });
+
+  // Group by level for horizontal spacing
+  const levels = {};
+  order.forEach((id) => {
+    const lvl = depth[id];
+    if (!levels[lvl]) levels[lvl] = [];
+    levels[lvl].push(id);
+  });
+
+  const horizontalGap = 250;
+  const verticalGap = 120;
+
+  const posById = {};
+  Object.entries(levels).forEach(([lvl, ids]) => {
+    const totalWidth = (ids.length - 1) * horizontalGap;
+    ids.forEach((id, i) => {
+      posById[id] = {
+        x: -totalWidth / 2 + i * horizontalGap,
+        y: parseInt(lvl) * verticalGap,
+      };
+    });
+  });
+
+  return {
+    nodes: nodes.map((node) => ({ ...node, position: posById[node.id] || { x: 0, y: 0 } })),
+    edges,
+  };
+}
+
 // Build adjacency: for each node, the set of connected node IDs and edge IDs
 function buildAdjacency(edges) {
   const neighborNodes = {};
@@ -209,7 +281,8 @@ export default function App({ graphData, customHeight, layout }) {
 
   const layouted = useMemo(() => {
     const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(graphData);
-    return layoutElements(rawNodes, rawEdges, { entityMode: showProperties && !isHierarchy });
+    if (isHierarchy) return treeLayout(rawNodes, rawEdges);
+    return layoutElements(rawNodes, rawEdges, { entityMode: showProperties });
   }, [graphData, showProperties, isHierarchy]);
 
   const adjacency = useMemo(
