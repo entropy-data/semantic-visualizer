@@ -62,7 +62,7 @@ export default function EntityNode({ data, type }) {
       overflow: 'hidden',
       cursor: data.link ? 'pointer' : 'default',
       boxShadow: data.highlight
-        ? `0 0 0 2px ${accentColor}`
+        ? `0 0 0 2px ${accentColor}, 0 0 12px ${accentColor}40`
         : '0 1px 3px rgba(0,0,0,0.06)',
     }}>
       <Handle type="target" position={Position.Top} id="top" style={handleStyle} />

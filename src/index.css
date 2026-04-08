@@ -9,7 +9,7 @@
 #semantic-visualizer .react-flow__node.selected {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: 20px;
 }
 
 #semantic-visualizer .react-flow__edge-textbg {

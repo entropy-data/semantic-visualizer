@@ -3,12 +3,14 @@ import React from 'react';
 const ACCENT_COLORS = {
   concept: '#3b82f6',
   property: '#22c55e',
+  sharedProperty: '#22c55e',
   metric: '#8b5cf6',
 };
 
 const TYPE_LABELS = {
   concept: 'Concept',
   property: 'Property',
+  sharedProperty: 'Shared Property',
   metric: 'Metric',
 };
 
@@ -63,14 +65,32 @@ export default function DetailPanel({ node, onClose }) {
             }}>
               {TYPE_LABELS[type] || 'Concept'}
             </div>
-            <div style={{
-              fontSize: 16,
-              fontWeight: 700,
-              color: '#111827',
-              wordBreak: 'break-word',
-            }}>
-              {label}
-            </div>
+            {link ? (
+              <a
+                href={link}
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: '#111827',
+                  wordBreak: 'break-word',
+                  textDecoration: 'none',
+                  display: 'block',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.color = accentColor}
+                onMouseOut={(e) => e.currentTarget.style.color = '#111827'}
+              >
+                {label}
+              </a>
+            ) : (
+              <div style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#111827',
+                wordBreak: 'break-word',
+              }}>
+                {label}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}

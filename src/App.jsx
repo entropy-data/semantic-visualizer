@@ -1,134 +1,146 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import {
   ReactFlow,
-  ConnectionLineType,
   Background,
   Controls,
   Panel,
+  MarkerType,
   useReactFlow,
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
-import dagre from '@dagrejs/dagre';
-import EntityNode from './EntityNode';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import KnowledgeNode from './KnowledgeNode';
+import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 
 import '@xyflow/react/dist/style.css';
 
 const nodeTypes = {
-  concept: EntityNode,
-  metric: EntityNode,
-  property: EntityNode,
+  concept: KnowledgeNode,
+  metric: KnowledgeNode,
+  property: KnowledgeNode,
+  sharedProperty: KnowledgeNode,
 };
 
-const MAX_VISIBLE_PROPERTIES = 8;
+const edgeTypes = {
+  floating: FloatingEdge,
+};
 
-// Node dimensions for layout
-const NODE_WIDTH = 250;
-const HEADER_HEIGHT = 40;
-const FIELD_ROW_HEIGHT = 30;
-const MORE_ROW_HEIGHT = 24;
-const DESC_HEIGHT = 50;
+function toReactFlowElements(graphData) {
+  const connectionCount = {};
+  graphData.edges.forEach((e) => {
+    connectionCount[e.source] = (connectionCount[e.source] || 0) + 1;
+    connectionCount[e.target] = (connectionCount[e.target] || 0) + 1;
+  });
 
-function getNodeHeight(node, hideProperties) {
-  const props = hideProperties ? [] : (node.data?.properties || []);
-  const description = node.data?.description;
-  const accent = 6;
-
-  if (props.length === 0) {
-    return accent + HEADER_HEIGHT + (description ? DESC_HEIGHT : 0);
-  }
-
-  const visibleCount = Math.min(props.length, MAX_VISIBLE_PROPERTIES);
-  const hasMore = props.length > MAX_VISIBLE_PROPERTIES;
-  return accent + HEADER_HEIGHT + visibleCount * FIELD_ROW_HEIGHT + (hasMore ? MORE_ROW_HEIGHT : 0);
-}
-
-function toReactFlowElements(graphData, hideInheritance) {
   const nodes = graphData.nodes.map((n) => ({
     id: n.id,
     type: n.type || 'concept',
     position: { x: 0, y: 0 },
-    data: n.data,
+    data: { ...n.data, connections: connectionCount[n.id] || 0 },
   }));
 
-  const filteredEdges = hideInheritance
-    ? graphData.edges.filter((e) => e.type !== 'isA')
-    : graphData.edges;
-
-  const edges = filteredEdges.map((e) => {
-    const isInheritance = e.type === 'isA';
-
-    // For isA, swap source/target so superclass (target) is placed on top by dagre TB layout
-    const source = isInheritance ? e.target : e.source;
-    const target = isInheritance ? e.source : e.target;
-
-    return {
-      id: e.id,
-      source,
-      target,
-      sourceHandle: 'bottom',
-      targetHandle: 'top',
-      label: e.label,
-      type: 'default', // bezier
-      markerEnd: isInheritance ? 'marker-inheritance' : 'marker-association',
-      style: {
-        stroke: isInheritance ? '#94a3b8' : '#b1b1b7',
-        strokeWidth: 1.5,
-      },
-      labelStyle: { fontSize: 10, fill: '#94a3b8', fontWeight: 500 },
-      labelBgStyle: { fill: '#fff', fillOpacity: 0.85 },
-      labelBgPadding: [4, 2],
-    };
+  // Compute parallel edge offsets: edges between the same pair get an index
+  const pairCounts = {};
+  graphData.edges.forEach((e) => {
+    const key = [e.source, e.target].sort().join('::');
+    pairCounts[key] = (pairCounts[key] || 0) + 1;
   });
+  const pairAssigned = {};
+  const edgeParallelData = {};
+  graphData.edges.forEach((e) => {
+    const key = [e.source, e.target].sort().join('::');
+    if (!pairAssigned[key]) pairAssigned[key] = 0;
+    edgeParallelData[e.id] = { index: pairAssigned[key]++, total: pairCounts[key] };
+  });
+
+  const edges = graphData.edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    label: e.label,
+    type: 'floating',
+    data: { label: e.label, parallel: edgeParallelData[e.id] },
+    style: {
+      stroke: '#94a3b8',
+      strokeWidth: 1.5,
+    },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: '#94a3b8',
+      width: 14,
+      height: 14,
+    },
+    labelStyle: { fontSize: 10, fill: '#64748b', fontWeight: 500 },
+    labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
+    labelBgPadding: [4, 2],
+  }));
 
   return { nodes, edges };
 }
 
-function layoutElements(nodes, edges, hideProperties) {
-  const g = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'TB', nodesep: 50, ranksep: 100 });
+function layoutElements(nodes, edges) {
+  // Spread nodes on a circle; larger radius for bigger graphs to avoid NaN
+  const radius = Math.max(nodes.length * 5, 300);
+  const simNodes = nodes.map((n, i) => ({
+    id: n.id,
+    x: Math.cos(2 * Math.PI * i / nodes.length) * radius,
+    y: Math.sin(2 * Math.PI * i / nodes.length) * radius,
+  }));
+  const simLinks = edges.map((e) => ({ source: e.source, target: e.target }));
 
-  nodes.forEach((node) => {
-    g.setNode(node.id, { width: NODE_WIDTH, height: getNodeHeight(node, hideProperties) });
+  const n = simNodes.length;
+  const large = n > 50;
+  const chargeStrength = large ? -1200 : -500;
+  const linkDistance = large ? 250 : 200;
+
+  const charge = forceManyBody().strength(chargeStrength);
+  if (large) charge.theta(1.2);
+
+  const simulation = forceSimulation(simNodes)
+    .force('link', forceLink(simLinks).id((d) => d.id).distance(linkDistance).strength(large ? 0.3 : 1))
+    .force('charge', charge)
+    .force('center', forceCenter(0, 0))
+    .force('collide', forceCollide(large ? 80 : 90))
+    .alphaDecay(large ? 0.04 : 0.0228)
+    .stop();
+
+  const iterations = large ? 250 : 300;
+  for (let i = 0; i < iterations; i++) simulation.tick();
+
+  // Guard against NaN positions
+  const posById = {};
+  simNodes.forEach((sn, i) => {
+    const x = isFinite(sn.x) ? sn.x : i * 100;
+    const y = isFinite(sn.y) ? sn.y : i * 100;
+    posById[sn.id] = { x, y };
   });
 
-  edges.forEach((edge) => {
-    g.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(g);
-
-  const layoutedNodes = nodes.map((node) => {
-    const pos = g.node(node.id);
-    const h = getNodeHeight(node, hideProperties);
-    return {
-      ...node,
-      position: { x: pos.x - NODE_WIDTH / 2, y: pos.y - h / 2 },
-      style: { width: NODE_WIDTH },
-      data: { ...node.data, hideProperties },
-    };
-  });
+  const layoutedNodes = nodes.map((node) => ({
+    ...node,
+    position: posById[node.id],
+  }));
 
   return { nodes: layoutedNodes, edges };
 }
 
-// Custom SVG marker definitions
-function MarkerDefs() {
-  return (
-    <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-      <defs>
-        <marker id="marker-inheritance" viewBox="0 0 10 10" refX="10" refY="5"
-          markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#fff" stroke="#94a3b8" strokeWidth="1" />
-        </marker>
-        <marker id="marker-association" viewBox="0 0 8 8" refX="8" refY="4"
-          markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-          <path d="M 0 0 L 8 4 L 0 8 z" fill="#b1b1b7" />
-        </marker>
-      </defs>
-    </svg>
-  );
+// Build adjacency: for each node, the set of connected node IDs and edge IDs
+function buildAdjacency(edges) {
+  const neighborNodes = {};
+  const neighborEdges = {};
+  edges.forEach((e) => {
+    if (!neighborNodes[e.source]) neighborNodes[e.source] = new Set();
+    if (!neighborNodes[e.target]) neighborNodes[e.target] = new Set();
+    neighborNodes[e.source].add(e.target);
+    neighborNodes[e.target].add(e.source);
+
+    if (!neighborEdges[e.source]) neighborEdges[e.source] = new Set();
+    if (!neighborEdges[e.target]) neighborEdges[e.target] = new Set();
+    neighborEdges[e.source].add(e.id);
+    neighborEdges[e.target].add(e.id);
+  });
+  return { neighborNodes, neighborEdges };
 }
 
 // Toggle button style helper
@@ -179,34 +191,79 @@ function EnlargeButton({ customHeight }) {
 
 export default function App({ graphData, customHeight }) {
   const { fitView } = useReactFlow();
-  const [hideProperties, setHideProperties] = useState(false);
-  const [hideInheritance, setHideInheritance] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
 
   const layouted = useMemo(() => {
-    const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(graphData, hideInheritance);
-    return layoutElements(rawNodes, rawEdges, hideProperties);
-  }, [graphData, hideProperties, hideInheritance]);
+    const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(graphData);
+    return layoutElements(rawNodes, rawEdges);
+  }, [graphData]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(layouted.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(layouted.edges);
+  const adjacency = useMemo(
+    () => buildAdjacency(layouted.edges),
+    [layouted.edges],
+  );
 
-  // Sync when layout inputs change
-  const [prevLayouted, setPrevLayouted] = useState(layouted);
-  if (layouted !== prevLayouted) {
-    setPrevLayouted(layouted);
-    setNodes(layouted.nodes);
-    setEdges(layouted.edges);
+  // Apply highlight/dim based on selected node
+  const displayNodes = useMemo(() => {
+    if (!selectedNode) return layouted.nodes;
+    const activeNodes = new Set([selectedNode.id]);
+    (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
+
+    return layouted.nodes.map((node) => ({
+      ...node,
+      data: { ...node.data, dimmed: !activeNodes.has(node.id) },
+    }));
+  }, [layouted.nodes, selectedNode, adjacency]);
+
+  const displayEdges = useMemo(() => {
+    if (!selectedNode) return layouted.edges;
+    const activeEdges = adjacency.neighborEdges[selectedNode.id] || new Set();
+
+    return layouted.edges.map((edge) => {
+      const active = activeEdges.has(edge.id);
+      return {
+        ...edge,
+        style: {
+          stroke: active ? '#6366f1' : '#e2e8f0',
+          strokeWidth: active ? 2.5 : 1,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: active ? '#6366f1' : '#e2e8f0',
+          width: 14,
+          height: 14,
+        },
+        data: { ...edge.data, dimmed: !active },
+        labelStyle: active
+          ? { fontSize: 11, fill: '#4338ca', fontWeight: 600 }
+          : { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
+        labelBgStyle: active
+          ? { fill: '#eef2ff', fillOpacity: 1 }
+          : { fill: '#fff', fillOpacity: 0.5 },
+        zIndex: active ? 10 : 0,
+      };
+    });
+  }, [layouted.edges, selectedNode, adjacency]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(displayNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
+
+  const [prevDisplay, setPrevDisplay] = useState({ nodes: displayNodes, edges: displayEdges });
+  if (displayNodes !== prevDisplay.nodes || displayEdges !== prevDisplay.edges) {
+    setPrevDisplay({ nodes: displayNodes, edges: displayEdges });
+    setNodes(displayNodes);
+    setEdges(displayEdges);
   }
 
   const resetLayout = useCallback(() => {
+    setSelectedNode(null);
     setNodes(layouted.nodes);
     setEdges(layouted.edges);
     setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
   }, [layouted, setNodes, setEdges, fitView]);
 
   const onNodeClick = useCallback((_event, node) => {
-    setSelectedNode(node);
+    setSelectedNode((prev) => prev?.id === node.id ? null : node);
   }, []);
 
   const onPaneClick = useCallback(() => {
@@ -215,14 +272,13 @@ export default function App({ graphData, customHeight }) {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <MarkerDefs />
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
-        connectionLineType={ConnectionLineType.Bezier}
+        edgeTypes={edgeTypes}
         fitView
         fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
         nodesDraggable={true}
@@ -251,18 +307,6 @@ export default function App({ graphData, customHeight }) {
               title="Reset node positions to automatic layout"
             >
               Reset Layout
-            </button>
-            <button
-              onClick={() => setHideProperties((v) => !v)}
-              style={toggleBtnStyle(hideProperties)}
-            >
-              {hideProperties ? 'Show Properties' : 'Hide Properties'}
-            </button>
-            <button
-              onClick={() => setHideInheritance((v) => !v)}
-              style={toggleBtnStyle(hideInheritance)}
-            >
-              {hideInheritance ? 'Show Inheritance' : 'Hide Inheritance'}
             </button>
             <EnlargeButton customHeight={customHeight || '400px'} />
           </div>
