@@ -9,7 +9,7 @@ import {
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
-import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
+import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force';
 import KnowledgeNode from './KnowledgeNode';
 import EntityNode from './EntityNode';
 import FloatingEdge from './FloatingEdge';
@@ -88,30 +88,40 @@ function toReactFlowElements(graphData) {
   return { nodes, edges };
 }
 
-function layoutElements(nodes, edges, { entityMode = false } = {}) {
-  // Spread nodes on a circle; larger radius for bigger graphs to avoid NaN
-  const radius = Math.max(nodes.length * 5, 300);
-  const simNodes = nodes.map((n, i) => ({
-    id: n.id,
-    x: Math.cos(2 * Math.PI * i / nodes.length) * radius,
-    y: Math.sin(2 * Math.PI * i / nodes.length) * radius,
-  }));
-  const simLinks = edges.map((e) => ({ source: e.source, target: e.target }));
+// Run force simulation on a subset of nodes/edges
+function forceLayoutComponent(compNodes, compEdges, entityMode) {
+  const n = compNodes.length;
 
-  const n = simNodes.length;
+  // Single node — no simulation needed
+  if (n === 1) {
+    return { [compNodes[0].id]: { x: 0, y: 0 } };
+  }
+
   const large = n > 50;
-  // Entity cards are ~220px wide and can be 300+px tall — need much more space
   const chargeStrength = entityMode ? -3000 : (large ? -1200 : -500);
   const linkDistance = entityMode ? 450 : (large ? 250 : 200);
   const collideRadius = entityMode ? 200 : (large ? 80 : 90);
 
+  const radius = Math.max(n * 5, 300);
+  const simNodes = compNodes.map((nd, i) => ({
+    id: nd.id,
+    x: Math.cos(2 * Math.PI * i / n) * radius,
+    y: Math.sin(2 * Math.PI * i / n) * radius,
+  }));
+  const simLinks = compEdges.map((e) => ({ source: e.source, target: e.target }));
+
   const charge = forceManyBody().strength(chargeStrength);
   if (large) charge.theta(1.2);
+
+  // Gentle gravity pulls outliers inward without cramping the dense core
+  const gravityStrength = large ? 0.08 : 0.05;
 
   const simulation = forceSimulation(simNodes)
     .force('link', forceLink(simLinks).id((d) => d.id).distance(linkDistance).strength(large ? 0.3 : 1))
     .force('charge', charge)
     .force('center', forceCenter(0, 0))
+    .force('x', forceX(0).strength(gravityStrength))
+    .force('y', forceY(0).strength(gravityStrength))
     .force('collide', forceCollide(collideRadius))
     .alphaDecay(large ? 0.04 : 0.0228)
     .stop();
@@ -119,17 +129,110 @@ function layoutElements(nodes, edges, { entityMode = false } = {}) {
   const iterations = large ? 250 : 300;
   for (let i = 0; i < iterations; i++) simulation.tick();
 
-  // Guard against NaN positions
   const posById = {};
   simNodes.forEach((sn, i) => {
-    const x = isFinite(sn.x) ? sn.x : i * 100;
-    const y = isFinite(sn.y) ? sn.y : i * 100;
-    posById[sn.id] = { x, y };
+    posById[sn.id] = {
+      x: isFinite(sn.x) ? sn.x : i * 100,
+      y: isFinite(sn.y) ? sn.y : i * 100,
+    };
   });
+  return posById;
+}
+
+function layoutElements(nodes, edges, { entityMode = false } = {}) {
+  // Detect connected components
+  const adj = {};
+  nodes.forEach((n) => { adj[n.id] = []; });
+  edges.forEach((e) => { adj[e.source].push(e.target); adj[e.target].push(e.source); });
+
+  const visited = new Set();
+  const components = []; // each: array of node ids
+  nodes.forEach((n) => {
+    if (visited.has(n.id)) return;
+    const comp = [];
+    const stack = [n.id];
+    while (stack.length) {
+      const id = stack.pop();
+      if (visited.has(id)) continue;
+      visited.add(id);
+      comp.push(id);
+      adj[id].forEach((nb) => { if (!visited.has(nb)) stack.push(nb); });
+    }
+    components.push(comp);
+  });
+
+  // Sort largest first
+  components.sort((a, b) => b.length - a.length);
+
+  const nodeById = {};
+  nodes.forEach((n) => { nodeById[n.id] = n; });
+
+  // Layout each component independently
+  const compLayouts = components.map((compIds) => {
+    const compIdSet = new Set(compIds);
+    const compNodes = compIds.map((id) => nodeById[id]);
+    const compEdges = edges.filter((e) => compIdSet.has(e.source) && compIdSet.has(e.target));
+    const posById = forceLayoutComponent(compNodes, compEdges, entityMode);
+
+    // Normalize positions so component's top-left is at (0, 0)
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    compIds.forEach((id) => {
+      minX = Math.min(minX, posById[id].x);
+      minY = Math.min(minY, posById[id].y);
+      maxX = Math.max(maxX, posById[id].x);
+      maxY = Math.max(maxY, posById[id].y);
+    });
+    compIds.forEach((id) => {
+      posById[id].x -= minX;
+      posById[id].y -= minY;
+    });
+
+    return { ids: compIds, posById, width: maxX - minX, height: maxY - minY };
+  });
+
+  // Pack components: largest stays at origin, others stack to the right
+  const gap = entityMode ? 300 : 150;
+  const globalPos = {};
+
+  if (compLayouts.length === 1) {
+    // Single component — just use its positions directly
+    const cl = compLayouts[0];
+    cl.ids.forEach((id) => { globalPos[id] = cl.posById[id]; });
+  } else {
+    // Place the main (largest) component at origin
+    const main = compLayouts[0];
+    main.ids.forEach((id) => { globalPos[id] = main.posById[id]; });
+
+    // Stack secondary components to the right, wrapping into columns
+    let cursorX = main.width + gap * 2;
+    let cursorY = 0;
+    let colMaxWidth = 0;
+
+    for (let i = 1; i < compLayouts.length; i++) {
+      const cl = compLayouts[i];
+
+      // Wrap to next column if this component would exceed the main cluster height
+      if (cursorY > 0 && cursorY + cl.height > main.height) {
+        cursorX += colMaxWidth + gap * 2;
+        cursorY = 0;
+        colMaxWidth = 0;
+      }
+
+      cl.ids.forEach((id) => {
+        globalPos[id] = {
+          x: cursorX + cl.posById[id].x,
+          y: cursorY + cl.posById[id].y,
+        };
+      });
+
+      colMaxWidth = Math.max(colMaxWidth, cl.width);
+      cursorY += cl.height + gap;
+    }
+  }
 
   const layoutedNodes = nodes.map((node) => ({
     ...node,
-    position: posById[node.id],
+    position: globalPos[node.id],
   }));
 
   return { nodes: layoutedNodes, edges };
