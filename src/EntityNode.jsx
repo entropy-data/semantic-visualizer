@@ -160,20 +160,17 @@ export default function EntityNode({ data, type }) {
                 </div>
               )}
             </>
-          ) : description ? (
+          ) : (
             <div style={{
               padding: '6px 10px',
               fontSize: 12,
-              color: '#6b7280',
+              color: '#9ca3af',
+              fontStyle: 'italic',
               lineHeight: 1.4,
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
             }}>
-              {description}
+              No properties
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,14 +11,22 @@ import {
 } from '@xyflow/react';
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide } from 'd3-force';
 import KnowledgeNode from './KnowledgeNode';
+import EntityNode from './EntityNode';
 import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 
 import '@xyflow/react/dist/style.css';
 
-const nodeTypes = {
+const defaultNodeTypes = {
   concept: KnowledgeNode,
   metric: KnowledgeNode,
+  property: KnowledgeNode,
+  sharedProperty: KnowledgeNode,
+};
+
+const entityNodeTypes = {
+  concept: EntityNode,
+  metric: EntityNode,
   property: KnowledgeNode,
   sharedProperty: KnowledgeNode,
 };
@@ -80,7 +88,7 @@ function toReactFlowElements(graphData) {
   return { nodes, edges };
 }
 
-function layoutElements(nodes, edges) {
+function layoutElements(nodes, edges, { entityMode = false } = {}) {
   // Spread nodes on a circle; larger radius for bigger graphs to avoid NaN
   const radius = Math.max(nodes.length * 5, 300);
   const simNodes = nodes.map((n, i) => ({
@@ -92,8 +100,10 @@ function layoutElements(nodes, edges) {
 
   const n = simNodes.length;
   const large = n > 50;
-  const chargeStrength = large ? -1200 : -500;
-  const linkDistance = large ? 250 : 200;
+  // Entity cards are ~220px wide and can be 300+px tall — need much more space
+  const chargeStrength = entityMode ? -3000 : (large ? -1200 : -500);
+  const linkDistance = entityMode ? 450 : (large ? 250 : 200);
+  const collideRadius = entityMode ? 200 : (large ? 80 : 90);
 
   const charge = forceManyBody().strength(chargeStrength);
   if (large) charge.theta(1.2);
@@ -102,7 +112,7 @@ function layoutElements(nodes, edges) {
     .force('link', forceLink(simLinks).id((d) => d.id).distance(linkDistance).strength(large ? 0.3 : 1))
     .force('charge', charge)
     .force('center', forceCenter(0, 0))
-    .force('collide', forceCollide(large ? 80 : 90))
+    .force('collide', forceCollide(collideRadius))
     .alphaDecay(large ? 0.04 : 0.0228)
     .stop();
 
@@ -160,12 +170,12 @@ const toggleBtnStyle = (active) => ({
 });
 
 // Enlarge/shrink button
-function EnlargeButton({ customHeight }) {
+function EnlargeButton({ customHeight, containerRef }) {
   const { fitView } = useReactFlow();
   const [enlarged, setEnlarged] = useState(false);
 
   const toggle = useCallback(() => {
-    const container = document.getElementById('semantic-visualizer');
+    const container = containerRef.current?.closest('.semantic-visualizer');
     if (!container) return;
     if (enlarged) {
       container.style.height = customHeight;
@@ -178,7 +188,7 @@ function EnlargeButton({ customHeight }) {
       fitView();
       container.scrollIntoView(true);
     }, 0);
-  }, [enlarged, customHeight, fitView]);
+  }, [enlarged, customHeight, fitView, containerRef]);
 
   return (
     <button onClick={toggle} style={toggleBtnStyle(false)}
@@ -189,14 +199,18 @@ function EnlargeButton({ customHeight }) {
   );
 }
 
-export default function App({ graphData, customHeight }) {
+export default function App({ graphData, customHeight, layout }) {
   const { fitView } = useReactFlow();
+  const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [showProperties, setShowProperties] = useState(false);
+  const isHierarchy = layout === 'tree';
+  const nodeTypes = showProperties && !isHierarchy ? entityNodeTypes : defaultNodeTypes;
 
   const layouted = useMemo(() => {
     const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(graphData);
-    return layoutElements(rawNodes, rawEdges);
-  }, [graphData]);
+    return layoutElements(rawNodes, rawEdges, { entityMode: showProperties && !isHierarchy });
+  }, [graphData, showProperties, isHierarchy]);
 
   const adjacency = useMemo(
     () => buildAdjacency(layouted.edges),
@@ -248,10 +262,23 @@ export default function App({ graphData, customHeight }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(displayNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
 
-  const [prevDisplay, setPrevDisplay] = useState({ nodes: displayNodes, edges: displayEdges });
-  if (displayNodes !== prevDisplay.nodes || displayEdges !== prevDisplay.edges) {
-    setPrevDisplay({ nodes: displayNodes, edges: displayEdges });
+  const [prevLayouted, setPrevLayouted] = useState(layouted);
+  const [prevDisplayEdges, setPrevDisplayEdges] = useState(displayEdges);
+
+  // When layout changes (e.g. toggle properties), apply new positions
+  if (layouted !== prevLayouted) {
+    setPrevLayouted(layouted);
     setNodes(displayNodes);
+    setEdges(displayEdges);
+    setPrevDisplayEdges(displayEdges);
+  }
+  // When only highlight/dim changes (e.g. node click), preserve current positions
+  else if (displayEdges !== prevDisplayEdges) {
+    setPrevDisplayEdges(displayEdges);
+    setNodes((cur) => cur.map((node) => {
+      const display = displayNodes.find((d) => d.id === node.id);
+      return display ? { ...node, data: display.data } : node;
+    }));
     setEdges(displayEdges);
   }
 
@@ -271,7 +298,7 @@ export default function App({ graphData, customHeight }) {
   }, []);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -299,6 +326,20 @@ export default function App({ graphData, customHeight }) {
         <Controls position="bottom-left" showInteractive={false} />
         <Panel position="top-right">
           <div style={{ display: 'flex', gap: 6 }}>
+            {!isHierarchy && (
+              <button
+                onClick={() => {
+                  setShowProperties((v) => !v);
+                  setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+                }}
+                style={toggleBtnStyle(showProperties)}
+                onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
+                onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
+                title="Show properties on concept and metric nodes"
+              >
+                Properties
+              </button>
+            )}
             <button
               onClick={resetLayout}
               style={toggleBtnStyle(false)}
@@ -308,7 +349,7 @@ export default function App({ graphData, customHeight }) {
             >
               Reset Layout
             </button>
-            <EnlargeButton customHeight={customHeight || '400px'} />
+            <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
           </div>
         </Panel>
       </ReactFlow>

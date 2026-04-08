@@ -4,19 +4,15 @@ import { ReactFlowProvider } from '@xyflow/react';
 import App from './App';
 import './index.css';
 
-let mounted = false;
-
-function mount() {
-  if (mounted) return;
-  const container = document.getElementById('semantic-visualizer');
-  if (!container) return;
+function initElement(container) {
+  if (container.dataset.svInit) return;
 
   // Defer mount until container is visible (ReactFlow needs dimensions)
   if (container.offsetParent === null) {
     const observer = new MutationObserver(() => {
       if (container.offsetParent !== null) {
         observer.disconnect();
-        mount();
+        initElement(container);
       }
     });
     observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['style', 'class'] });
@@ -25,28 +21,33 @@ function mount() {
 
   const jsonUrl = container.dataset.jsonUrl;
   const height = container.dataset.height || '400px';
+  const layout = container.dataset.layout || 'force';
 
   if (!jsonUrl) return;
 
-  mounted = true;
+  container.dataset.svInit = 'true';
   fetch(jsonUrl, { credentials: 'same-origin' })
     .then((res) => res.json())
     .then((data) => {
-      if (!data.nodes || data.nodes.length === 0) { mounted = false; return; }
+      if (!data.nodes || data.nodes.length === 0) { delete container.dataset.svInit; return; }
       container.style.height = height;
       createRoot(container).render(
         <ReactFlowProvider>
-          <App graphData={data} customHeight={height} />
+          <App graphData={data} customHeight={height} layout={layout} />
         </ReactFlowProvider>
       );
     })
-    .catch((err) => { mounted = false; console.error('Semantic visualizer fetch error:', err); });
+    .catch((err) => { delete container.dataset.svInit; console.error('Semantic visualizer fetch error:', err); });
+}
+
+function mountAll() {
+  document.querySelectorAll('.semantic-visualizer').forEach(initElement);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mount);
+  document.addEventListener('DOMContentLoaded', mountAll);
 } else {
-  mount();
+  mountAll();
 }
 
-document.addEventListener('htmx:load', mount);
+document.addEventListener('htmx:load', mountAll);
