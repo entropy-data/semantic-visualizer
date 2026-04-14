@@ -383,7 +383,17 @@ export default function App({ graphData, customHeight, layout }) {
   const nodeTypes = showProperties && !isHierarchy ? entityNodeTypes : defaultNodeTypes;
 
   const layouted = useMemo(() => {
-    const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(graphData);
+    // In ERD mode, shared properties are rendered as attributes inside entity
+    // nodes, so hide the standalone shared_property nodes and their edges.
+    const sourceData = showProperties && !isHierarchy
+      ? (() => {
+          const filteredNodes = graphData.nodes.filter((n) => n.type !== 'shared_property');
+          const keepIds = new Set(filteredNodes.map((n) => n.id));
+          const filteredEdges = graphData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
+          return { nodes: filteredNodes, edges: filteredEdges };
+        })()
+      : graphData;
+    const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(sourceData);
     if (isHierarchy) return treeLayout(rawNodes, rawEdges);
     return layoutElements(rawNodes, rawEdges, { entityMode: showProperties });
   }, [graphData, showProperties, isHierarchy]);
@@ -504,9 +514,9 @@ export default function App({ graphData, customHeight, layout }) {
                 style={toggleBtnStyle(showProperties)}
                 onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
                 onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
-                title="Show properties on concept and metric nodes"
+                title="Show as Entity-Relationship Diagram — render properties inside concept and metric nodes"
               >
-                Show Properties
+                Show as Entity-Relationship-Diagram
               </button>
             )}
             <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
