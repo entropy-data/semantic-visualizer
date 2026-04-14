@@ -2,22 +2,22 @@ import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 
 const ACCENT_COLORS = {
-  concept: '#3b82f6',    // blue-500
+  entity: '#3b82f6',    // blue-500
   property: '#22c55e',   // green-500
-  sharedProperty: '#22c55e',   // green-500
+  shared_property: '#22c55e',   // green-500
   metric: '#8b5cf6',     // violet-500
 };
 
 const BG_COLORS = {
-  concept: '#eff6ff',    // blue-50
+  entity: '#eff6ff',    // blue-50
   property: '#f0fdf4',   // green-50
-  sharedProperty: '#f0fdf4',   // green-50
+  shared_property: '#f0fdf4',   // green-50
   metric: '#f5f3ff',     // violet-50
 };
 
 // Icons matching the Thymeleaf element-icon.html fragment
 const TYPE_ICONS = {
-  concept: (
+  entity: (
     <svg width="14" height="14" viewBox="0 0 20 20" fill="#60a5fa">
       <path d="M10.362 1.093a.75.75 0 0 0-.724 0L2.523 5.018 10 9.143l7.477-4.125-7.115-3.925ZM18 6.443l-7.25 4v8.25l6.888-3.8A.75.75 0 0 0 18 14.25V6.443ZM9.25 18.693v-8.25l-7.25-4v7.807a.75.75 0 0 0 .362.643l6.888 3.8Z"/>
     </svg>
@@ -32,7 +32,7 @@ const TYPE_ICONS = {
       <path fillRule="evenodd" d="M4.5 2A2.5 2.5 0 0 0 2 4.5v3.879a2.5 2.5 0 0 0 .732 1.767l7.5 7.5a2.5 2.5 0 0 0 3.536 0l3.878-3.878a2.5 2.5 0 0 0 0-3.536l-7.5-7.5A2.5 2.5 0 0 0 8.38 2H4.5ZM5 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd"/>
     </svg>
   ),
-  sharedProperty: (
+  shared_property: (
     <svg width="14" height="14" viewBox="0 0 20 20" fill="#4ade80">
       <path fillRule="evenodd" d="M4.5 2A2.5 2.5 0 0 0 2 4.5v3.879a2.5 2.5 0 0 0 .732 1.767l7.5 7.5a2.5 2.5 0 0 0 3.536 0l3.878-3.878a2.5 2.5 0 0 0 0-3.536l-7.5-7.5A2.5 2.5 0 0 0 8.38 2H4.5ZM5 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd"/>
     </svg>
@@ -43,9 +43,9 @@ const handleStyle = { visibility: 'hidden', width: 6, height: 6 };
 
 export default function KnowledgeNode({ data, type }) {
   const dimmed = data.dimmed;
-  const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.concept;
-  const bgColor = BG_COLORS[type] || BG_COLORS.concept;
-  const icon = TYPE_ICONS[type] || TYPE_ICONS.concept;
+  const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
+  const bgColor = BG_COLORS[type] || BG_COLORS.entity;
+  const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
 
   return (
     <div style={{

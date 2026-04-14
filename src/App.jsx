@@ -18,17 +18,17 @@ import DetailPanel from './DetailPanel';
 import '@xyflow/react/dist/style.css';
 
 const defaultNodeTypes = {
-  concept: KnowledgeNode,
+  entity: KnowledgeNode,
   metric: KnowledgeNode,
   property: KnowledgeNode,
-  sharedProperty: KnowledgeNode,
+  shared_property: KnowledgeNode,
 };
 
 const entityNodeTypes = {
-  concept: EntityNode,
+  entity: EntityNode,
   metric: EntityNode,
   property: KnowledgeNode,
-  sharedProperty: KnowledgeNode,
+  shared_property: KnowledgeNode,
 };
 
 const edgeTypes = {
@@ -44,7 +44,7 @@ function toReactFlowElements(graphData) {
 
   const nodes = graphData.nodes.map((n) => ({
     id: n.id,
-    type: n.type || 'concept',
+    type: n.type || 'entity',
     position: { x: 0, y: 0 },
     data: { ...n.data, connections: connectionCount[n.id] || 0 },
   }));
@@ -458,13 +458,6 @@ export default function App({ graphData, customHeight, layout }) {
     setEdges(displayEdges);
   }
 
-  const resetLayout = useCallback(() => {
-    setSelectedNode(null);
-    setNodes(layouted.nodes);
-    setEdges(layouted.edges);
-    setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
-  }, [layouted, setNodes, setEdges, fitView]);
-
   const onNodeClick = useCallback((_event, node) => {
     setSelectedNode((prev) => prev?.id === node.id ? null : node);
   }, []);
@@ -516,15 +509,6 @@ export default function App({ graphData, customHeight, layout }) {
                 Show Properties
               </button>
             )}
-            <button
-              onClick={resetLayout}
-              style={toggleBtnStyle(false)}
-              onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
-              onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
-              title="Reset node positions to automatic layout"
-            >
-              Reset Layout
-            </button>
             <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
           </div>
         </Panel>

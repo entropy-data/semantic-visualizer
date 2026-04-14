@@ -1,16 +1,16 @@
 import React from 'react';
 
 const ACCENT_COLORS = {
-  concept: '#3b82f6',
+  entity: '#3b82f6',
   property: '#22c55e',
-  sharedProperty: '#22c55e',
+  shared_property: '#22c55e',
   metric: '#8b5cf6',
 };
 
 const TYPE_LABELS = {
-  concept: 'Concept',
+  entity: 'Entity',
   property: 'Property',
-  sharedProperty: 'Shared Property',
+  shared_property: 'Property',
   metric: 'Metric',
 };
 
@@ -23,8 +23,8 @@ const KeyIcon = () => (
 export default function DetailPanel({ node, onClose }) {
   if (!node) return null;
 
-  const type = node.type || 'concept';
-  const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.concept;
+  const type = node.type || 'entity';
+  const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
   const { label, description, link, properties = [] } = node.data;
   const ownProperties = properties.filter((p) => !p.inherited);
   const inheritedProperties = properties.filter((p) => p.inherited);
@@ -63,7 +63,7 @@ export default function DetailPanel({ node, onClose }) {
               color: accentColor,
               marginBottom: 4,
             }}>
-              {TYPE_LABELS[type] || 'Concept'}
+              {TYPE_LABELS[type] || 'Entity'}
             </div>
             {link ? (
               <a

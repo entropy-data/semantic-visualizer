@@ -4,14 +4,14 @@ import { Handle, Position } from '@xyflow/react';
 const MAX_VISIBLE_PROPERTIES = 8;
 
 const ACCENT_COLORS = {
-  concept: '#3b82f6',    // blue-500
+  entity: '#3b82f6',    // blue-500
   property: '#22c55e',  // green-500
   metric: '#8b5cf6',    // violet-500
 };
 
 // Icons matching the Thymeleaf element-icon.html fragment
 const TYPE_ICONS = {
-  concept: (
+  entity: (
     // Cube icon (blue)
     <svg width="16" height="16" viewBox="0 0 20 20" fill="#60a5fa">
       <path d="M10.362 1.093a.75.75 0 0 0-.724 0L2.523 5.018 10 9.143l7.477-4.125-7.115-3.925ZM18 6.443l-7.25 4v8.25l6.888-3.8A.75.75 0 0 0 18 14.25V6.443ZM9.25 18.693v-8.25l-7.25-4v7.807a.75.75 0 0 0 .362.643l6.888 3.8Z"/>
@@ -41,8 +41,8 @@ const handleStyle = { visibility: 'hidden', width: 8, height: 8 };
 
 export default function EntityNode({ data, type }) {
   const [expanded, setExpanded] = useState(false);
-  const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.concept;
-  const icon = TYPE_ICONS[type] || TYPE_ICONS.concept;
+  const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
+  const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
   const hideProperties = data.hideProperties;
   const allProperties = hideProperties ? [] : (data.properties || []);
   const hasMore = !expanded && allProperties.length > MAX_VISIBLE_PROPERTIES;
