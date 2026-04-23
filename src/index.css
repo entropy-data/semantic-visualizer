@@ -12,6 +12,18 @@
   border-radius: 20px;
 }
 
+/* Group nodes render their outline as an SVG hull — suppress the default
+   rectangular chrome and selection outline so only the hull is visible. */
+#semantic-visualizer .react-flow__node-group,
+#semantic-visualizer .react-flow__node-group.selected {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
 #semantic-visualizer .react-flow__edge-textbg {
   rx: 4;
 }

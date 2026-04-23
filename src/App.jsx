@@ -12,6 +12,7 @@ import {
 import { forceSimulation, forceLink, forceManyBody, forceCenter, forceCollide, forceX, forceY } from 'd3-force';
 import KnowledgeNode from './KnowledgeNode';
 import EntityNode from './EntityNode';
+import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 
@@ -22,6 +23,7 @@ const defaultNodeTypes = {
   metric: KnowledgeNode,
   property: KnowledgeNode,
   shared_property: KnowledgeNode,
+  group: GroupNode,
 };
 
 const entityNodeTypes = {
@@ -29,6 +31,7 @@ const entityNodeTypes = {
   metric: EntityNode,
   property: KnowledgeNode,
   shared_property: KnowledgeNode,
+  group: GroupNode,
 };
 
 const edgeTypes = {
@@ -45,6 +48,7 @@ function toReactFlowElements(graphData) {
   const nodes = graphData.nodes.map((n) => ({
     id: n.id,
     type: n.type || 'entity',
+    parentId: n.parentId || undefined,
     position: { x: 0, y: 0 },
     data: { ...n.data, connections: connectionCount[n.id] || 0 },
   }));
@@ -88,8 +92,10 @@ function toReactFlowElements(graphData) {
   return { nodes, edges };
 }
 
-// Run force simulation on a subset of nodes/edges
-function forceLayoutComponent(compNodes, compEdges, entityMode) {
+// Run force simulation on a subset of nodes/edges.
+// Optional nodeSizes: id -> {width, height}; used to compute per-node collision radius
+// so oversized nodes (e.g. sized group containers) don't overlap with neighbors.
+function forceLayoutComponent(compNodes, compEdges, entityMode, nodeSizes) {
   const n = compNodes.length;
 
   // Single node — no simulation needed
@@ -100,7 +106,14 @@ function forceLayoutComponent(compNodes, compEdges, entityMode) {
   const large = n > 50;
   const chargeStrength = entityMode ? -3000 : (large ? -1200 : -500);
   const linkDistance = entityMode ? 450 : (large ? 250 : 200);
-  const collideRadius = entityMode ? 200 : (large ? 80 : 90);
+  const baseCollideRadius = entityMode ? 200 : (large ? 80 : 90);
+
+  const radiusOf = (id) => {
+    const sz = nodeSizes && nodeSizes[id];
+    if (!sz) return baseCollideRadius;
+    // Half-diagonal plus a small margin keeps sized containers from overlapping.
+    return Math.max(baseCollideRadius, Math.hypot(sz.width, sz.height) / 2 + 20);
+  };
 
   const radius = Math.max(n * 5, 300);
   const simNodes = compNodes.map((nd, i) => ({
@@ -122,7 +135,7 @@ function forceLayoutComponent(compNodes, compEdges, entityMode) {
     .force('center', forceCenter(0, 0))
     .force('x', forceX(0).strength(gravityStrength))
     .force('y', forceY(0).strength(gravityStrength))
-    .force('collide', forceCollide(collideRadius))
+    .force('collide', forceCollide((d) => radiusOf(d.id)))
     .alphaDecay(large ? 0.04 : 0.0228)
     .stop();
 
@@ -139,7 +152,7 @@ function forceLayoutComponent(compNodes, compEdges, entityMode) {
   return posById;
 }
 
-function layoutElements(nodes, edges, { entityMode = false } = {}) {
+function layoutElements(nodes, edges, { entityMode = false, nodeSizes = null } = {}) {
   // Detect connected components
   const adj = {};
   nodes.forEach((n) => { adj[n.id] = []; });
@@ -172,15 +185,18 @@ function layoutElements(nodes, edges, { entityMode = false } = {}) {
     const compIdSet = new Set(compIds);
     const compNodes = compIds.map((id) => nodeById[id]);
     const compEdges = edges.filter((e) => compIdSet.has(e.source) && compIdSet.has(e.target));
-    const posById = forceLayoutComponent(compNodes, compEdges, entityMode);
+    const posById = forceLayoutComponent(compNodes, compEdges, entityMode, nodeSizes);
 
-    // Normalize positions so component's top-left is at (0, 0)
+    // Normalize positions so component's top-left is at (0, 0).
+    // Include sized-node half-extents so oversized containers aren't clipped.
+    const halfW = (id) => (nodeSizes && nodeSizes[id]) ? nodeSizes[id].width / 2 : 0;
+    const halfH = (id) => (nodeSizes && nodeSizes[id]) ? nodeSizes[id].height / 2 : 0;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     compIds.forEach((id) => {
-      minX = Math.min(minX, posById[id].x);
-      minY = Math.min(minY, posById[id].y);
-      maxX = Math.max(maxX, posById[id].x);
-      maxY = Math.max(maxY, posById[id].y);
+      minX = Math.min(minX, posById[id].x - halfW(id));
+      minY = Math.min(minY, posById[id].y - halfH(id));
+      maxX = Math.max(maxX, posById[id].x + halfW(id));
+      maxY = Math.max(maxY, posById[id].y + halfH(id));
     });
     compIds.forEach((id) => {
       posById[id].x -= minX;
@@ -234,6 +250,165 @@ function layoutElements(nodes, edges, { entityMode = false } = {}) {
     ...node,
     position: globalPos[node.id],
   }));
+
+  return { nodes: layoutedNodes, edges };
+}
+
+// Group container sizing constants. GROUP_PADDING must be ≥ the visualizer's
+// CORNER_RADIUS (see GroupNode.jsx) so the offset hull stays inside the
+// group's bounding box and neighbor hulls don't overlap.
+const GROUP_PADDING = 78;
+const GROUP_LABEL_HEIGHT = 28;
+const LEAF_WIDTH = 180;
+const LEAF_HEIGHT = 56;
+
+// ERD-mode entity nodes embed properties inline. Sizing here must roughly match
+// EntityNode's rendered box so groups don't clip or overlap their children.
+const ERD_ENTITY_WIDTH = 240;
+const ERD_HEADER_HEIGHT = 40; // accent bar + header
+const ERD_ROW_HEIGHT = 27;
+const ERD_MAX_VISIBLE_PROPS = 8;
+
+function estimateLeafSize(node, entityMode) {
+  if (entityMode && (node.type === 'entity' || node.type === 'metric')) {
+    const rawCount = node.data?.properties?.length || 0;
+    const rows = rawCount === 0 ? 1 : Math.min(rawCount, ERD_MAX_VISIBLE_PROPS);
+    return { width: ERD_ENTITY_WIDTH, height: ERD_HEADER_HEIGHT + rows * ERD_ROW_HEIGHT };
+  }
+  return { width: LEAF_WIDTH, height: LEAF_HEIGHT };
+}
+
+// Layout with hierarchical group containers. Post-order: size inner groups first,
+// then layout their parent's children using those sizes for collision.
+function layoutWithGroups(nodes, edges, { entityMode = false } = {}) {
+  const childrenByParent = {};
+  const nodeById = {};
+  nodes.forEach((n) => { nodeById[n.id] = n; });
+  nodes.forEach((n) => {
+    const pid = n.parentId || '__root__';
+    if (!childrenByParent[pid]) childrenByParent[pid] = [];
+    childrenByParent[pid].push(n);
+  });
+
+  // For a given node id, walk ancestors to find its ancestor at a given target parent level.
+  // Used to lift cross-group edges to the level at which we're laying out.
+  const parentOf = (id) => {
+    const n = nodeById[id];
+    return n && n.parentId ? n.parentId : null;
+  };
+  const ancestorAtLevel = (nodeId, levelId) => {
+    // Walk up from nodeId until the direct parent equals levelId (or '__root__' for root).
+    let current = nodeId;
+    while (current) {
+      const pid = parentOf(current) || '__root__';
+      if (pid === levelId) return current;
+      current = parentOf(current);
+    }
+    return null;
+  };
+
+  const positions = {}; // id -> relative position (to its parent, or absolute if top-level)
+  const sizes = {};     // group id -> {width, height}
+
+  function layoutLevel(parentId) {
+    const children = childrenByParent[parentId] || [];
+    if (children.length === 0) return;
+
+    // Recurse into subgroups first so we know their sizes before laying out this level.
+    children.forEach((c) => { if (c.type === 'group') layoutLevel(c.id); });
+
+    // Lift edges: for this level, consider edges between siblings.
+    // A cross-group edge (e.g. from a node deep inside groupA to a node deep inside groupB,
+    // both siblings here) gets mapped to groupA ↔ groupB at this level.
+    const childIds = children.map((c) => c.id);
+    const childIdSet = new Set(childIds);
+    const liftedEdgeKeys = new Set();
+    const liftedEdges = [];
+    edges.forEach((e) => {
+      const sa = childIdSet.has(e.source) ? e.source : ancestorAtLevel(e.source, parentId);
+      const ta = childIdSet.has(e.target) ? e.target : ancestorAtLevel(e.target, parentId);
+      if (!sa || !ta || sa === ta) return;
+      const key = sa < ta ? `${sa}::${ta}` : `${ta}::${sa}`;
+      if (liftedEdgeKeys.has(key)) return;
+      liftedEdgeKeys.add(key);
+      liftedEdges.push({ source: sa, target: ta });
+    });
+
+    // Collect sizes for children (subgroups contribute their computed size; leaves get a default
+    // that depends on render mode — ERD entity nodes are much taller than plain bubbles).
+    const childSizes = {};
+    children.forEach((c) => {
+      if (c.type === 'group') childSizes[c.id] = sizes[c.id] || { width: 200, height: 120 };
+      else childSizes[c.id] = estimateLeafSize(c, entityMode);
+    });
+
+    // Run the same multi-component layout used for the flat case, with size-aware collision.
+    const { nodes: laidOut } = layoutElements(children, liftedEdges, { nodeSizes: childSizes, entityMode });
+
+    // Convert the flat-layout positions (which are absolute within the component)
+    // into positions relative to this group's content origin.
+    const padTop = parentId === '__root__' ? 0 : GROUP_PADDING + GROUP_LABEL_HEIGHT;
+    const padLeft = parentId === '__root__' ? 0 : GROUP_PADDING;
+
+    let maxX = 0, maxY = 0;
+    laidOut.forEach((n) => {
+      const sz = childSizes[n.id];
+      // layoutElements returns positions normalized so the component's bounding box starts
+      // at (0,0); positions are the *center* of each node (since halfW/halfH were used for bounds).
+      const x = n.position.x - sz.width / 2 + padLeft;
+      const y = n.position.y - sz.height / 2 + padTop;
+      positions[n.id] = { x, y };
+      maxX = Math.max(maxX, x + sz.width);
+      maxY = Math.max(maxY, y + sz.height);
+    });
+
+    if (parentId !== '__root__') {
+      sizes[parentId] = {
+        width: maxX + GROUP_PADDING,
+        height: maxY + GROUP_PADDING,
+      };
+    }
+  }
+
+  layoutLevel('__root__');
+
+  // Build laid-out nodes. Order matters: parents must come before children in React Flow.
+  const byDepth = [];
+  const depthOf = (id) => {
+    let d = 0;
+    let cur = parentOf(id);
+    while (cur) { d++; cur = parentOf(cur); }
+    return d;
+  };
+  const withDepth = nodes.map((n) => ({ n, d: depthOf(n.id) }));
+  withDepth.sort((a, b) => a.d - b.d);
+
+  const layoutedNodes = withDepth.map(({ n }) => {
+    const pos = positions[n.id] || { x: 0, y: 0 };
+    const out = {
+      ...n,
+      position: pos,
+    };
+    if (n.type === 'group') {
+      const sz = sizes[n.id] || { width: 200, height: 120 };
+      // Suppress React Flow's default group node chrome (border, background, shadow)
+      // so only the custom SVG hull is visible.
+      out.style = {
+        width: sz.width,
+        height: sz.height,
+        background: 'transparent',
+        border: 'none',
+        boxShadow: 'none',
+        padding: 0,
+        borderRadius: 0,
+      };
+    }
+    if (n.parentId) {
+      out.parentId = n.parentId;
+      out.extent = 'parent';
+    }
+    return out;
+  });
 
   return { nodes: layoutedNodes, edges };
 }
@@ -379,24 +554,39 @@ export default function App({ graphData, customHeight, layout }) {
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showProperties, setShowProperties] = useState(false);
+  const hasGroups = useMemo(
+    () => graphData.nodes.some((n) => n.type === 'group'),
+    [graphData],
+  );
+  const [showGroups, setShowGroups] = useState(true);
   const isHierarchy = layout === 'tree';
+  const groupsActive = hasGroups && showGroups && !isHierarchy;
   const nodeTypes = showProperties && !isHierarchy ? entityNodeTypes : defaultNodeTypes;
 
   const layouted = useMemo(() => {
     // In ERD mode, shared properties are rendered as attributes inside entity
     // nodes, so hide the standalone shared_property nodes and their edges.
-    const sourceData = showProperties && !isHierarchy
-      ? (() => {
-          const filteredNodes = graphData.nodes.filter((n) => n.type !== 'shared_property');
-          const keepIds = new Set(filteredNodes.map((n) => n.id));
-          const filteredEdges = graphData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
-          return { nodes: filteredNodes, edges: filteredEdges };
-        })()
-      : graphData;
+    let sourceData = graphData;
+    if (showProperties && !isHierarchy) {
+      const filteredNodes = graphData.nodes.filter((n) => n.type !== 'shared_property');
+      const keepIds = new Set(filteredNodes.map((n) => n.id));
+      const filteredEdges = graphData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
+      sourceData = { nodes: filteredNodes, edges: filteredEdges };
+    }
+    // When groups are hidden, drop group nodes entirely and promote their children to root.
+    if (!groupsActive) {
+      const filteredNodes = sourceData.nodes
+        .filter((n) => n.type !== 'group')
+        .map(({ parentId, ...rest }) => rest);
+      const keepIds = new Set(filteredNodes.map((n) => n.id));
+      const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
+      sourceData = { nodes: filteredNodes, edges: filteredEdges };
+    }
     const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(sourceData);
     if (isHierarchy) return treeLayout(rawNodes, rawEdges);
+    if (groupsActive) return layoutWithGroups(rawNodes, rawEdges, { entityMode: showProperties });
     return layoutElements(rawNodes, rawEdges, { entityMode: showProperties });
-  }, [graphData, showProperties, isHierarchy]);
+  }, [graphData, showProperties, isHierarchy, groupsActive]);
 
   const adjacency = useMemo(
     () => buildAdjacency(layouted.edges),
@@ -505,6 +695,20 @@ export default function App({ graphData, customHeight, layout }) {
         <Controls position="bottom-left" showInteractive={false} />
         <Panel position="top-right">
           <div style={{ display: 'flex', gap: 6 }}>
+            {!isHierarchy && hasGroups && (
+              <button
+                onClick={() => {
+                  setShowGroups((v) => !v);
+                  setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+                }}
+                style={toggleBtnStyle(showGroups)}
+                onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
+                onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
+                title="Render groups as containers around the concepts and properties that belong to them"
+              >
+                Show groups
+              </button>
+            )}
             {!isHierarchy && (
               <button
                 onClick={() => {
