@@ -6,6 +6,18 @@
   cursor: grabbing;
 }
 
+/* Animate position and size changes when collapsing/expanding groups so the
+   transition feels smooth. Exclude nodes currently being dragged so the user's
+   drag input stays pixel-accurate instead of easing behind the cursor. */
+#semantic-visualizer .react-flow__node:not(.dragging) {
+  transition: transform 250ms ease-out, width 250ms ease-out, height 250ms ease-out;
+}
+
+#semantic-visualizer .react-flow__edge-path,
+#semantic-visualizer .react-flow__edge-interaction {
+  transition: d 250ms ease-out;
+}
+
 #semantic-visualizer .react-flow__node.selected {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
@@ -13,7 +25,10 @@
 }
 
 /* Group nodes render their outline as an SVG hull — suppress the default
-   rectangular chrome and selection outline so only the hull is visible. */
+   rectangular chrome and selection outline so only the hull is visible.
+   Re-enable pointer events so the collapse button inside GroupNode is clickable
+   (React Flow v12's default group styling disables them to let clicks fall
+   through to nested children). */
 #semantic-visualizer .react-flow__node-group,
 #semantic-visualizer .react-flow__node-group.selected {
   background: transparent !important;
@@ -22,6 +37,7 @@
   outline: none !important;
   padding: 0 !important;
   border-radius: 0 !important;
+  pointer-events: auto !important;
 }
 
 #semantic-visualizer .react-flow__edge-textbg {
