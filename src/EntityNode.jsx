@@ -40,11 +40,13 @@ const KeyIcon = () => (
 const handleStyle = { visibility: 'hidden', width: 8, height: 8 };
 
 export default function EntityNode({ data, type }) {
-  const [expanded, setExpanded] = useState(false);
   const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
   const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
   const hideProperties = data.hideProperties;
   const allProperties = hideProperties ? [] : (data.properties || []);
+  // Auto-expand if a highlighted property would otherwise be hidden behind "+N more".
+  const highlightHidden = allProperties.some((p, i) => p.highlight && i >= MAX_VISIBLE_PROPERTIES);
+  const [expanded, setExpanded] = useState(highlightHidden);
   const hasMore = !expanded && allProperties.length > MAX_VISIBLE_PROPERTIES;
   const properties = hasMore ? allProperties.slice(0, MAX_VISIBLE_PROPERTIES) : allProperties;
   const hiddenCount = allProperties.length - MAX_VISIBLE_PROPERTIES;
@@ -116,11 +118,13 @@ export default function EntityNode({ data, type }) {
                     padding: '5px 10px',
                     borderTop: '1px solid #E9EEF4',
                     gap: 8,
+                    background: prop.highlight ? `${ACCENT_COLORS.property}1a` : 'transparent',
+                    boxShadow: prop.highlight ? `inset 3px 0 0 ${ACCENT_COLORS.property}` : 'none',
                   }}
                 >
                   <span style={{
                     fontSize: 13,
-                    fontWeight: 500,
+                    fontWeight: prop.highlight ? 700 : 500,
                     color: prop.inherited ? '#9ca3af' : '#111827',
                     fontStyle: prop.inherited ? 'italic' : 'normal',
                     overflow: 'hidden',

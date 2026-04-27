@@ -664,7 +664,13 @@ export default function App({ graphData, customHeight, layout }) {
   const { fitView } = useReactFlow();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
-  const [showProperties, setShowProperties] = useState(false);
+  // Default to ERD mode when a property is highlighted — otherwise the highlight
+  // (which lives inside an entity node's property list) wouldn't be visible.
+  const hasHighlightedProperty = useMemo(
+    () => graphData.nodes.some((n) => (n.data?.properties || []).some((p) => p.highlight)),
+    [graphData],
+  );
+  const [showProperties, setShowProperties] = useState(hasHighlightedProperty);
   const hasGroups = useMemo(
     () => graphData.nodes.some((n) => n.type === 'group'),
     [graphData],
