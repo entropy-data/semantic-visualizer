@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ReactFlowProvider } from '@xyflow/react';
 import App from './App';
+import { storageKeyFor } from './storage';
 import './index.css';
 
 function initElement(container) {
@@ -33,7 +34,7 @@ function initElement(container) {
       container.style.height = height;
       createRoot(container).render(
         <ReactFlowProvider>
-          <App graphData={data} customHeight={height} layout={layout} />
+          <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} />
         </ReactFlowProvider>
       );
     })

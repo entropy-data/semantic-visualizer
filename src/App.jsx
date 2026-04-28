@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState, useRef } from 'react';
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -17,6 +17,7 @@ import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 import { GroupActionsContext } from './GroupActionsContext';
+import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
 
 import '@xyflow/react/dist/style.css';
 
@@ -660,8 +661,8 @@ function EnlargeButton({ customHeight, containerRef }) {
   );
 }
 
-export default function App({ graphData, customHeight, layout }) {
-  const { fitView } = useReactFlow();
+export default function App({ graphData, customHeight, layout, storageKey }) {
+  const { fitView, getNodes } = useReactFlow();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
@@ -670,13 +671,20 @@ export default function App({ graphData, customHeight, layout }) {
     () => graphData.nodes.some((n) => (n.data?.properties || []).some((p) => p.highlight)),
     [graphData],
   );
-  const [showProperties, setShowProperties] = useState(hasHighlightedProperty);
+  // Read once on mount; subsequent reads happen ad-hoc inside the persistence callbacks.
+  const initialStored = useMemo(() => loadLayout(storageKey), [storageKey]);
+  const initialToggles = initialStored?.toggles;
+  const [showProperties, setShowProperties] = useState(
+    initialToggles?.showProperties ?? hasHighlightedProperty,
+  );
   const hasGroups = useMemo(
     () => graphData.nodes.some((n) => n.type === 'group'),
     [graphData],
   );
-  const [showGroups, setShowGroups] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState(() => new Set());
+  const [showGroups, setShowGroups] = useState(initialToggles?.showGroups ?? false);
+  const [collapsedGroups, setCollapsedGroups] = useState(
+    () => new Set(initialToggles?.collapsedGroups || []),
+  );
   // Bumped by the relayout button — included in baseLayouted deps to force a
   // fresh force-sim run with different initial positions.
   const [layoutSeed, setLayoutSeed] = useState(0);
@@ -732,12 +740,38 @@ export default function App({ graphData, customHeight, layout }) {
     else collapseAll();
   }, [allGroupsCollapsed, expandAll, collapseAll]);
 
+  // Position persistence is scoped per "mode" — flat/groups/tree × simple/erd —
+  // because positions from one mode (e.g. groups expanded) don't make sense in another.
+  const modeKey = `${isHierarchy ? 'tree' : groupsActive ? 'groups' : 'flat'}:${showProperties ? 'erd' : 'simple'}`;
+
+  const overlaySavedPositions = useCallback((nodes) => {
+    const data = loadLayout(storageKey);
+    const saved = data?.positions?.[modeKey];
+    if (!saved) return nodes;
+    return nodes.map((n) => (saved[n.id] ? { ...n, position: saved[n.id] } : n));
+  }, [storageKey, modeKey]);
+
+  // Persist toggles whenever they change.
+  useEffect(() => {
+    saveToggles(storageKey, {
+      showProperties,
+      showGroups,
+      collapsedGroups: Array.from(collapsedGroups),
+    });
+  }, [storageKey, showProperties, showGroups, collapsedGroups]);
+
+  const onNodeDragStop = useCallback(() => {
+    savePositions(storageKey, modeKey, getNodes());
+  }, [storageKey, modeKey, getNodes]);
+
   // Relayout: bump the seed so baseLayouted recomputes. The initial-position
   // jitter (see forceLayoutComponent) uses the seed to produce a different
-  // arrangement each click.
+  // arrangement each click. Also discards saved positions for the current mode
+  // — otherwise the saved overlay would re-pin nodes immediately after relayout.
   const relayout = useCallback(() => {
+    clearPositions(storageKey, modeKey);
     setLayoutSeed((s) => s + 1);
-  }, []);
+  }, [storageKey, modeKey]);
 
   const groupActions = useMemo(
     () => ({ toggleCollapse, collapsedSet: collapsedGroups }),
@@ -818,16 +852,17 @@ export default function App({ graphData, customHeight, layout }) {
     });
   }, [layouted.edges, selectedNode, adjacency]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(displayNodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState(overlaySavedPositions(displayNodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
 
   const [prevLayouted, setPrevLayouted] = useState(layouted);
   const [prevDisplayEdges, setPrevDisplayEdges] = useState(displayEdges);
 
-  // When layout changes (e.g. toggle properties), apply new positions
+  // When layout changes (e.g. toggle properties), apply new positions —
+  // overlaying any saved drag-positions for the new mode.
   if (layouted !== prevLayouted) {
     setPrevLayouted(layouted);
-    setNodes(displayNodes);
+    setNodes(overlaySavedPositions(displayNodes));
     setEdges(displayEdges);
     setPrevDisplayEdges(displayEdges);
   }
@@ -874,6 +909,7 @@ export default function App({ graphData, customHeight, layout }) {
         proOptions={{ hideAttribution: true }}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
+        onNodeDragStop={onNodeDragStop}
       >
         <Background color="#e2e8f0" gap={20} />
         <Controls position="bottom-left" showInteractive={false}>
