@@ -675,7 +675,7 @@ export default function App({ graphData, customHeight, layout }) {
     () => graphData.nodes.some((n) => n.type === 'group'),
     [graphData],
   );
-  const [showGroups, setShowGroups] = useState(true);
+  const [showGroups, setShowGroups] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState(() => new Set());
   // Bumped by the relayout button — included in baseLayouted deps to force a
   // fresh force-sim run with different initial positions.
