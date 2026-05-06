@@ -853,10 +853,15 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     }
     const hasContext = layouted.nodes.some((n) => n.data?.searchMatch === false);
     if (!hasContext) return layouted.nodes;
-    return layouted.nodes.map((node) => ({
-      ...node,
-      data: { ...node.data, dimmed: node.data?.searchMatch === false },
-    }));
+    // Group containers fade too — when searching, the user wants their eye on
+    // the matched concepts, not the organizational hulls around them. The
+    // matches stay at full saturation; everything else (context leaves and
+    // group/collapsed-group containers) recedes.
+    return layouted.nodes.map((node) => {
+      const isContainer = node.type === 'group' || node.type === 'collapsed_group';
+      const shouldDim = isContainer || node.data?.searchMatch === false;
+      return { ...node, data: { ...node.data, dimmed: shouldDim } };
+    });
   }, [layouted.nodes, selectedNode, adjacency]);
 
   const displayEdges = useMemo(() => {
@@ -942,7 +947,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     if (dataChanged) setPrevGraphData(graphData);
     if (dataChanged && isFiltered) {
       setNodes(displayNodes);
-      setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+      setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
     } else {
       setNodes(overlaySavedPositions(displayNodes));
     }
@@ -978,7 +983,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
+        fitViewOptions={{ padding: 0.1, maxZoom: 1.5 }}
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
@@ -1003,7 +1008,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
             <ControlButton
               onClick={() => {
                 toggleCollapseAll();
-                setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 50);
+                setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
               }}
               title={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
               aria-label={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
@@ -1027,7 +1032,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
           <ControlButton
             onClick={() => {
               relayout();
-              setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 50);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
             }}
             title="Auto layout — rearrange the diagram"
             aria-label="Auto layout"
@@ -1047,7 +1052,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
               <button
                 onClick={() => {
                   setShowGroups((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
                 }}
                 style={toggleBtnStyle(showGroups)}
                 onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
@@ -1061,7 +1066,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
               <button
                 onClick={() => {
                   setShowProperties((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
                 }}
                 style={toggleBtnStyle(showProperties)}
                 onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
