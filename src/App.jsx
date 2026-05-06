@@ -810,47 +810,83 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     [layouted.edges],
   );
 
-  // Apply highlight/dim based on selected node
+  // Apply highlight/dim based on selected node, falling back to search context
+  // when nothing is selected. Server tags non-match leaves with searchMatch=false
+  // when a search returned 1-hop neighbors as context — we dim those to keep
+  // the eye on actual hits. Groups don't carry searchMatch (defaults true) so
+  // they're never dimmed by search alone. Click-selection always wins over
+  // search dimming so clicking a context node lets the user explore from it.
   const displayNodes = useMemo(() => {
-    if (!selectedNode) return layouted.nodes;
-    const activeNodes = new Set([selectedNode.id]);
-    (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
-
+    if (selectedNode) {
+      const activeNodes = new Set([selectedNode.id]);
+      (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
+      return layouted.nodes.map((node) => ({
+        ...node,
+        data: { ...node.data, dimmed: !activeNodes.has(node.id) },
+      }));
+    }
+    const hasContext = layouted.nodes.some((n) => n.data?.searchMatch === false);
+    if (!hasContext) return layouted.nodes;
     return layouted.nodes.map((node) => ({
       ...node,
-      data: { ...node.data, dimmed: !activeNodes.has(node.id) },
+      data: { ...node.data, dimmed: node.data?.searchMatch === false },
     }));
   }, [layouted.nodes, selectedNode, adjacency]);
 
   const displayEdges = useMemo(() => {
-    if (!selectedNode) return layouted.edges;
-    const activeEdges = adjacency.neighborEdges[selectedNode.id] || new Set();
-
+    if (selectedNode) {
+      const activeEdges = adjacency.neighborEdges[selectedNode.id] || new Set();
+      return layouted.edges.map((edge) => {
+        const active = activeEdges.has(edge.id);
+        return {
+          ...edge,
+          style: {
+            stroke: active ? '#6366f1' : '#e2e8f0',
+            strokeWidth: active ? 2.5 : 1,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: active ? '#6366f1' : '#e2e8f0',
+            width: 14,
+            height: 14,
+          },
+          data: { ...edge.data, dimmed: !active },
+          labelStyle: active
+            ? { fontSize: 11, fill: '#4338ca', fontWeight: 600 }
+            : { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
+          labelBgStyle: active
+            ? { fill: '#eef2ff', fillOpacity: 1 }
+            : { fill: '#fff', fillOpacity: 0.5 },
+          zIndex: active ? 10 : 0,
+        };
+      });
+    }
+    // Search context: dim edges where either endpoint is a non-match (the
+    // server already drops context↔context edges, so what remains is
+    // match↔match — kept full — and match↔context — dimmed).
+    const matchIds = new Set(
+      layouted.nodes.filter((n) => n.data?.searchMatch !== false).map((n) => n.id),
+    );
+    const hasContext = matchIds.size < layouted.nodes.length;
+    if (!hasContext) return layouted.edges;
     return layouted.edges.map((edge) => {
-      const active = activeEdges.has(edge.id);
+      const fullyMatched = matchIds.has(edge.source) && matchIds.has(edge.target);
+      if (fullyMatched) return edge;
       return {
         ...edge,
-        style: {
-          stroke: active ? '#6366f1' : '#e2e8f0',
-          strokeWidth: active ? 2.5 : 1,
-        },
+        style: { stroke: '#e2e8f0', strokeWidth: 1 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: active ? '#6366f1' : '#e2e8f0',
+          color: '#e2e8f0',
           width: 14,
           height: 14,
         },
-        data: { ...edge.data, dimmed: !active },
-        labelStyle: active
-          ? { fontSize: 11, fill: '#4338ca', fontWeight: 600 }
-          : { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
-        labelBgStyle: active
-          ? { fill: '#eef2ff', fillOpacity: 1 }
-          : { fill: '#fff', fillOpacity: 0.5 },
-        zIndex: active ? 10 : 0,
+        data: { ...edge.data, dimmed: true },
+        labelStyle: { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
+        labelBgStyle: { fill: '#fff', fillOpacity: 0.5 },
       };
     });
-  }, [layouted.edges, selectedNode, adjacency]);
+  }, [layouted.edges, selectedNode, adjacency, layouted.nodes]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(overlaySavedPositions(displayNodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
