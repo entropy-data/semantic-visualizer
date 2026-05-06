@@ -899,7 +899,15 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     });
   }, [layouted.edges, selectedNode, adjacency, layouted.nodes]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(overlaySavedPositions(displayNodes));
+  // Initial state: skip the saved-position overlay when mounting with a
+  // filtered subgraph. HTMX morph re-mounts this component on each search
+  // (the .semantic-visualizer container is replaced), so the graphData prop
+  // is always fresh on mount — meaning the dataChanged branch below never
+  // catches search transitions. ReactFlow's fitView prop reframes
+  // automatically once positions are set, so no explicit fitView call here.
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    isFiltered ? displayNodes : overlaySavedPositions(displayNodes),
+  );
   const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
 
   const [prevLayouted, setPrevLayouted] = useState(layouted);
