@@ -751,6 +751,16 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     return nodes.map((n) => (saved[n.id] ? { ...n, position: saved[n.id] } : n));
   }, [storageKey, modeKey]);
 
+  // True when the server returned a search-filtered subgraph (presence of any
+  // context node — searchMatch === false — is the signal). When filtered, the
+  // saved drag-position overlay is skipped so the fresh force layout actually
+  // shows; dragging is also not persisted, to avoid polluting the unfiltered
+  // map with positions from a small subset.
+  const isFiltered = useMemo(
+    () => graphData.nodes.some((n) => n.data?.searchMatch === false),
+    [graphData],
+  );
+
   // Persist toggles whenever they change.
   useEffect(() => {
     saveToggles(storageKey, {
@@ -761,8 +771,9 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
   }, [storageKey, showProperties, showGroups, collapsedGroups]);
 
   const onNodeDragStop = useCallback(() => {
+    if (isFiltered) return;
     savePositions(storageKey, modeKey, getNodes());
-  }, [storageKey, modeKey, getNodes]);
+  }, [storageKey, modeKey, getNodes, isFiltered]);
 
   // Relayout: bump the seed so baseLayouted recomputes. The initial-position
   // jitter (see forceLayoutComponent) uses the seed to produce a different
@@ -893,12 +904,25 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
 
   const [prevLayouted, setPrevLayouted] = useState(layouted);
   const [prevDisplayEdges, setPrevDisplayEdges] = useState(displayEdges);
+  const [prevGraphData, setPrevGraphData] = useState(graphData);
 
-  // When layout changes (e.g. toggle properties), apply new positions —
-  // overlaying any saved drag-positions for the new mode.
+  // When layout changes, apply new positions. Two cases:
+  //   1. Filter result arrived (graphData identity changed AND filter active):
+  //      trust the fresh force layout and reframe, since saved positions from
+  //      the unfiltered view would scatter the small result across stale
+  //      coordinates.
+  //   2. Mode toggle (same graphData, or filter cleared): overlay saved
+  //      drag-positions so the user keeps their hand-arranged layout.
   if (layouted !== prevLayouted) {
     setPrevLayouted(layouted);
-    setNodes(overlaySavedPositions(displayNodes));
+    const dataChanged = graphData !== prevGraphData;
+    if (dataChanged) setPrevGraphData(graphData);
+    if (dataChanged && isFiltered) {
+      setNodes(displayNodes);
+      setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+    } else {
+      setNodes(overlaySavedPositions(displayNodes));
+    }
     setEdges(displayEdges);
     setPrevDisplayEdges(displayEdges);
   }
