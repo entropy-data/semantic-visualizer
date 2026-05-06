@@ -108,6 +108,20 @@ function seededAngleOffset(seed) {
   return (seed * 0.6180339887) * Math.PI * 2;
 }
 
+// LCG random source for d3-force. Forces internally call `Math.random` for
+// tie-breaking when nodes coincide and for collision relaxation, which means
+// re-running the same simulation produces visibly different layouts each
+// time. Routing search-driven mounts through the layout (instead of overlaying
+// saved positions) made that noise visible. A seeded RNG eliminates it so
+// (data, seed) → identical positions.
+function seededRandom(seed) {
+  let s = (((seed | 0) * 1664525 + 1013904223) >>> 0) || 1;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
 // Run force simulation on a subset of nodes/edges.
 // Optional nodeSizes: id -> {width, height}; used to compute per-node collision radius
 // so oversized nodes (e.g. sized group containers) don't overlap with neighbors.
@@ -147,6 +161,7 @@ function forceLayoutComponent(compNodes, compEdges, entityMode, nodeSizes, seed)
   const gravityStrength = large ? 0.08 : 0.05;
 
   const simulation = forceSimulation(simNodes)
+    .randomSource(seededRandom(seed + n))
     .force('link', forceLink(simLinks).id((d) => d.id).distance(linkDistance).strength(large ? 0.3 : 1))
     .force('charge', charge)
     .force('center', forceCenter(0, 0))
