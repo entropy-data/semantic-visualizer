@@ -108,6 +108,20 @@ function seededAngleOffset(seed) {
   return (seed * 0.6180339887) * Math.PI * 2;
 }
 
+// LCG random source for d3-force. Forces internally call `Math.random` for
+// tie-breaking when nodes coincide and for collision relaxation, which means
+// re-running the same simulation produces visibly different layouts each
+// time. Routing search-driven mounts through the layout (instead of overlaying
+// saved positions) made that noise visible. A seeded RNG eliminates it so
+// (data, seed) → identical positions.
+function seededRandom(seed) {
+  let s = (((seed | 0) * 1664525 + 1013904223) >>> 0) || 1;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
 // Run force simulation on a subset of nodes/edges.
 // Optional nodeSizes: id -> {width, height}; used to compute per-node collision radius
 // so oversized nodes (e.g. sized group containers) don't overlap with neighbors.
@@ -147,6 +161,7 @@ function forceLayoutComponent(compNodes, compEdges, entityMode, nodeSizes, seed)
   const gravityStrength = large ? 0.08 : 0.05;
 
   const simulation = forceSimulation(simNodes)
+    .randomSource(seededRandom(seed + n))
     .force('link', forceLink(simLinks).id((d) => d.id).distance(linkDistance).strength(large ? 0.3 : 1))
     .force('charge', charge)
     .force('center', forceCenter(0, 0))
@@ -751,6 +766,16 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     return nodes.map((n) => (saved[n.id] ? { ...n, position: saved[n.id] } : n));
   }, [storageKey, modeKey]);
 
+  // True when the server returned a search-filtered subgraph (presence of any
+  // context node — searchMatch === false — is the signal). When filtered, the
+  // saved drag-position overlay is skipped so the fresh force layout actually
+  // shows; dragging is also not persisted, to avoid polluting the unfiltered
+  // map with positions from a small subset.
+  const isFiltered = useMemo(
+    () => graphData.nodes.some((n) => n.data?.searchMatch === false),
+    [graphData],
+  );
+
   // Persist toggles whenever they change.
   useEffect(() => {
     saveToggles(storageKey, {
@@ -761,8 +786,9 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
   }, [storageKey, showProperties, showGroups, collapsedGroups]);
 
   const onNodeDragStop = useCallback(() => {
+    if (isFiltered) return;
     savePositions(storageKey, modeKey, getNodes());
-  }, [storageKey, modeKey, getNodes]);
+  }, [storageKey, modeKey, getNodes, isFiltered]);
 
   // Relayout: bump the seed so baseLayouted recomputes. The initial-position
   // jitter (see forceLayoutComponent) uses the seed to produce a different
@@ -810,59 +836,121 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
     [layouted.edges],
   );
 
-  // Apply highlight/dim based on selected node
+  // Apply highlight/dim based on selected node, falling back to search context
+  // when nothing is selected. Server tags non-match leaves with searchMatch=false
+  // when a search returned 1-hop neighbors as context — we dim those to keep
+  // the eye on actual hits. Groups don't carry searchMatch (defaults true) so
+  // they're never dimmed by search alone. Click-selection always wins over
+  // search dimming so clicking a context node lets the user explore from it.
   const displayNodes = useMemo(() => {
-    if (!selectedNode) return layouted.nodes;
-    const activeNodes = new Set([selectedNode.id]);
-    (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
-
-    return layouted.nodes.map((node) => ({
-      ...node,
-      data: { ...node.data, dimmed: !activeNodes.has(node.id) },
-    }));
+    if (selectedNode) {
+      const activeNodes = new Set([selectedNode.id]);
+      (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
+      return layouted.nodes.map((node) => ({
+        ...node,
+        data: { ...node.data, dimmed: !activeNodes.has(node.id) },
+      }));
+    }
+    const hasContext = layouted.nodes.some((n) => n.data?.searchMatch === false);
+    if (!hasContext) return layouted.nodes;
+    // Group containers fade too — when searching, the user wants their eye on
+    // the matched concepts, not the organizational hulls around them. The
+    // matches stay at full saturation; everything else (context leaves and
+    // group/collapsed-group containers) recedes.
+    return layouted.nodes.map((node) => {
+      const isContainer = node.type === 'group' || node.type === 'collapsed_group';
+      const shouldDim = isContainer || node.data?.searchMatch === false;
+      return { ...node, data: { ...node.data, dimmed: shouldDim } };
+    });
   }, [layouted.nodes, selectedNode, adjacency]);
 
   const displayEdges = useMemo(() => {
-    if (!selectedNode) return layouted.edges;
-    const activeEdges = adjacency.neighborEdges[selectedNode.id] || new Set();
-
+    if (selectedNode) {
+      const activeEdges = adjacency.neighborEdges[selectedNode.id] || new Set();
+      return layouted.edges.map((edge) => {
+        const active = activeEdges.has(edge.id);
+        return {
+          ...edge,
+          style: {
+            stroke: active ? '#6366f1' : '#e2e8f0',
+            strokeWidth: active ? 2.5 : 1,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: active ? '#6366f1' : '#e2e8f0',
+            width: 14,
+            height: 14,
+          },
+          data: { ...edge.data, dimmed: !active },
+          labelStyle: active
+            ? { fontSize: 11, fill: '#4338ca', fontWeight: 600 }
+            : { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
+          labelBgStyle: active
+            ? { fill: '#eef2ff', fillOpacity: 1 }
+            : { fill: '#fff', fillOpacity: 0.5 },
+          zIndex: active ? 10 : 0,
+        };
+      });
+    }
+    // Search context: dim edges where either endpoint is a non-match (the
+    // server already drops context↔context edges, so what remains is
+    // match↔match — kept full — and match↔context — dimmed).
+    const matchIds = new Set(
+      layouted.nodes.filter((n) => n.data?.searchMatch !== false).map((n) => n.id),
+    );
+    const hasContext = matchIds.size < layouted.nodes.length;
+    if (!hasContext) return layouted.edges;
     return layouted.edges.map((edge) => {
-      const active = activeEdges.has(edge.id);
+      const fullyMatched = matchIds.has(edge.source) && matchIds.has(edge.target);
+      if (fullyMatched) return edge;
       return {
         ...edge,
-        style: {
-          stroke: active ? '#6366f1' : '#e2e8f0',
-          strokeWidth: active ? 2.5 : 1,
-        },
+        style: { stroke: '#e2e8f0', strokeWidth: 1 },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: active ? '#6366f1' : '#e2e8f0',
+          color: '#e2e8f0',
           width: 14,
           height: 14,
         },
-        data: { ...edge.data, dimmed: !active },
-        labelStyle: active
-          ? { fontSize: 11, fill: '#4338ca', fontWeight: 600 }
-          : { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
-        labelBgStyle: active
-          ? { fill: '#eef2ff', fillOpacity: 1 }
-          : { fill: '#fff', fillOpacity: 0.5 },
-        zIndex: active ? 10 : 0,
+        data: { ...edge.data, dimmed: true },
+        labelStyle: { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
+        labelBgStyle: { fill: '#fff', fillOpacity: 0.5 },
       };
     });
-  }, [layouted.edges, selectedNode, adjacency]);
+  }, [layouted.edges, selectedNode, adjacency, layouted.nodes]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(overlaySavedPositions(displayNodes));
+  // Initial state: skip the saved-position overlay when mounting with a
+  // filtered subgraph. HTMX morph re-mounts this component on each search
+  // (the .semantic-visualizer container is replaced), so the graphData prop
+  // is always fresh on mount — meaning the dataChanged branch below never
+  // catches search transitions. ReactFlow's fitView prop reframes
+  // automatically once positions are set, so no explicit fitView call here.
+  const [nodes, setNodes, onNodesChange] = useNodesState(
+    isFiltered ? displayNodes : overlaySavedPositions(displayNodes),
+  );
   const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
 
   const [prevLayouted, setPrevLayouted] = useState(layouted);
   const [prevDisplayEdges, setPrevDisplayEdges] = useState(displayEdges);
+  const [prevGraphData, setPrevGraphData] = useState(graphData);
 
-  // When layout changes (e.g. toggle properties), apply new positions —
-  // overlaying any saved drag-positions for the new mode.
+  // When layout changes, apply new positions. Two cases:
+  //   1. Filter result arrived (graphData identity changed AND filter active):
+  //      trust the fresh force layout and reframe, since saved positions from
+  //      the unfiltered view would scatter the small result across stale
+  //      coordinates.
+  //   2. Mode toggle (same graphData, or filter cleared): overlay saved
+  //      drag-positions so the user keeps their hand-arranged layout.
   if (layouted !== prevLayouted) {
     setPrevLayouted(layouted);
-    setNodes(overlaySavedPositions(displayNodes));
+    const dataChanged = graphData !== prevGraphData;
+    if (dataChanged) setPrevGraphData(graphData);
+    if (dataChanged && isFiltered) {
+      setNodes(displayNodes);
+      setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+    } else {
+      setNodes(overlaySavedPositions(displayNodes));
+    }
     setEdges(displayEdges);
     setPrevDisplayEdges(displayEdges);
   }
@@ -895,7 +983,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.3, maxZoom: 1 }}
+        fitViewOptions={{ padding: 0.1, maxZoom: 1.5 }}
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
@@ -920,7 +1008,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
             <ControlButton
               onClick={() => {
                 toggleCollapseAll();
-                setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 50);
+                setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
               }}
               title={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
               aria-label={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
@@ -944,7 +1032,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
           <ControlButton
             onClick={() => {
               relayout();
-              setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 50);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
             }}
             title="Auto layout — rearrange the diagram"
             aria-label="Auto layout"
@@ -964,7 +1052,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
               <button
                 onClick={() => {
                   setShowGroups((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
                 }}
                 style={toggleBtnStyle(showGroups)}
                 onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
@@ -978,7 +1066,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
               <button
                 onClick={() => {
                   setShowProperties((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.3, maxZoom: 1 }), 0);
+                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
                 }}
                 style={toggleBtnStyle(showProperties)}
                 onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
