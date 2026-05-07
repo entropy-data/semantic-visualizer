@@ -4,6 +4,7 @@ import {
   Background,
   Controls,
   ControlButton,
+  MiniMap,
   Panel,
   MarkerType,
   useReactFlow,
@@ -676,7 +677,7 @@ function EnlargeButton({ customHeight, containerRef }) {
   );
 }
 
-export default function App({ graphData, customHeight, layout, storageKey }) {
+export default function App({ graphData, customHeight, layout, storageKey, showMiniMap }) {
   const { fitView, getNodes } = useReactFlow();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -994,7 +995,6 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
         preventScrolling={false}
         minZoom={0.1}
         maxZoom={2}
-        proOptions={{ hideAttribution: true }}
         onNodeClick={onNodeClick}
         onPaneClick={onPaneClick}
         onNodeDragStop={onNodeDragStop}
@@ -1046,6 +1046,7 @@ export default function App({ graphData, customHeight, layout, storageKey }) {
             </svg>
           </ControlButton>
         </Controls>
+        {showMiniMap && <MiniMap zoomable pannable />}
         <Panel position="top-right">
           <div style={{ display: 'flex', gap: 6 }}>
             {!isHierarchy && hasGroups && (

@@ -23,6 +23,7 @@ function initElement(container) {
   const jsonUrl = container.dataset.jsonUrl;
   const height = container.dataset.height || '400px';
   const layout = container.dataset.layout || 'force';
+  const showMiniMap = container.dataset.showMinimap === 'true';
 
   if (!jsonUrl) return;
 
@@ -34,7 +35,7 @@ function initElement(container) {
       container.style.height = height;
       createRoot(container).render(
         <ReactFlowProvider>
-          <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} />
+          <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} showMiniMap={showMiniMap} />
         </ReactFlowProvider>
       );
     })
