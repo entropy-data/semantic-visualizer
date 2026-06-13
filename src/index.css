@@ -58,13 +58,3 @@
   stroke: #888 !important;
   stroke-width: 2.5px !important;
 }
-
-#semantic-visualizer .react-flow__controls-button {
-  width: 24px;
-  height: 24px;
-}
-
-#semantic-visualizer .react-flow__controls-button svg {
-  max-width: 12px;
-  max-height: 12px;
-}

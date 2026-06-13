@@ -18,6 +18,7 @@ import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 import { GroupActionsContext } from './GroupActionsContext';
+import { zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon } from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
 
 import '@xyflow/react/dist/style.css';
@@ -678,7 +679,7 @@ function EnlargeButton({ customHeight, containerRef }) {
 }
 
 export default function App({ graphData, customHeight, layout, storageKey, showMiniMap }) {
-  const { fitView, getNodes } = useReactFlow();
+  const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
@@ -1000,10 +1001,7 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
         onNodeDragStop={onNodeDragStop}
       >
         <Background color="#e2e8f0" gap={20} />
-        <Controls position="bottom-left" showInteractive={false}>
-          {/* order values push custom buttons above the built-in Zoom/Fit
-              buttons in the Controls flex-column stack: collapse-all on top,
-              auto-layout below. */}
+        <Controls position="bottom-left" showZoom={false} showFitView={false} showInteractive={false}>
           {!isHierarchy && hasGroups && (
             <ControlButton
               onClick={() => {
@@ -1012,21 +1010,8 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
               }}
               title={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
               aria-label={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
-              style={{ order: -2 }}
             >
-              {allGroupsCollapsed ? (
-                // Expand icon: two bars with outward arrows
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
-                  <path d="M4 9l8-6 8 6" />
-                  <path d="M4 15l8 6 8-6" />
-                </svg>
-              ) : (
-                // Collapse icon: two bars with inward arrows
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
-                  <path d="M4 3l8 6 8-6" />
-                  <path d="M4 21l8-6 8 6" />
-                </svg>
-              )}
+              {allGroupsCollapsed ? expandAllIcon : collapseAllIcon}
             </ControlButton>
           )}
           <ControlButton
@@ -1034,16 +1019,23 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
               relayout();
               setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
             }}
-            title="Auto layout — rearrange the diagram"
+            title="Auto layout: rearrange the diagram"
             aria-label="Auto layout"
-            style={{ order: -1 }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
-              <rect x="3" y="3" width="7" height="7" rx="1" />
-              <rect x="14" y="3" width="7" height="5" rx="1" />
-              <rect x="14" y="12" width="7" height="9" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" />
-            </svg>
+            {autoLayoutIcon}
+          </ControlButton>
+          <ControlButton onClick={() => zoomIn()} title="Zoom in" aria-label="Zoom in">
+            {zoomInIcon}
+          </ControlButton>
+          <ControlButton onClick={() => zoomOut()} title="Zoom out" aria-label="Zoom out">
+            {zoomOutIcon}
+          </ControlButton>
+          <ControlButton
+            onClick={() => fitView({ padding: 0.3, maxZoom: 1 })}
+            title="Fit view"
+            aria-label="Fit view"
+          >
+            {fitViewIcon}
           </ControlButton>
         </Controls>
         {showMiniMap && <MiniMap zoomable pannable />}
