@@ -1,0 +1,49 @@
+{
+  "controls": {
+    "expandAll": "Alle Gruppen aufklappen",
+    "collapseAll": "Alle Gruppen einklappen",
+    "autoLayout": {
+      "title": "Auto-Layout: Diagramm neu anordnen",
+      "label": "Auto-Layout"
+    },
+    "zoomIn": "Hineinzoomen",
+    "zoomOut": "Herauszoomen",
+    "fitView": "Ansicht einpassen",
+    "enlarge": "Vergrößern",
+    "shrink": "Verkleinern"
+  },
+  "toolbar": {
+    "showGroups": {
+      "label": "Gruppen anzeigen",
+      "title": "Gruppen als Container um die zugehörigen Konzepte und Eigenschaften herum darstellen"
+    },
+    "erd": {
+      "label": "Als Entity-Relationship-Diagramm anzeigen",
+      "title": "Als Entity-Relationship-Diagramm anzeigen — Eigenschaften innerhalb der Konzept- und Metrik-Knoten darstellen"
+    }
+  },
+  "detail": {
+    "close": "Schließen",
+    "openDetails": "Details öffnen →",
+    "properties": "Eigenschaften",
+    "inherited": "Geerbt",
+    "noProperties": "Keine Eigenschaften",
+    "noMembers": "Keine Mitglieder",
+    "members": "Mitglieder ({{count}})",
+    "membersTotal": ", {{total}} gesamt",
+    "type": {
+      "entity": "Entität",
+      "property": "Eigenschaft",
+      "metric": "Metrik",
+      "group": "Gruppe"
+    },
+    "expandThisGroup": "Diese Gruppe aufklappen",
+    "collapseThisGroup": "Diese Gruppe einklappen"
+  },
+  "node": {
+    "noProperties": "Keine Eigenschaften",
+    "group": "Gruppe",
+    "expandGroup": "Gruppe aufklappen",
+    "collapseGroup": "Gruppe einklappen"
+  }
+}

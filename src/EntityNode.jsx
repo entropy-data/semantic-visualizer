@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, Position } from '@xyflow/react';
 
 const MAX_VISIBLE_PROPERTIES = 8;
@@ -40,6 +41,7 @@ const KeyIcon = () => (
 const handleStyle = { visibility: 'hidden', width: 8, height: 8 };
 
 export default function EntityNode({ data, type }) {
+  const { t } = useTranslation();
   const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
   const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
   const hideProperties = data.hideProperties;
@@ -172,7 +174,7 @@ export default function EntityNode({ data, type }) {
               fontStyle: 'italic',
               lineHeight: 1.4,
             }}>
-              No properties
+              {t('node.noProperties')}
             </div>
           )}
         </div>

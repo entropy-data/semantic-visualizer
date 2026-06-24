@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ReactFlow,
   Background,
@@ -650,6 +651,7 @@ const toggleBtnStyle = (active) => ({
 
 // Enlarge/shrink button
 function EnlargeButton({ customHeight, containerRef }) {
+  const { t } = useTranslation();
   const { fitView } = useReactFlow();
   const [enlarged, setEnlarged] = useState(false);
 
@@ -673,12 +675,13 @@ function EnlargeButton({ customHeight, containerRef }) {
     <button onClick={toggle} style={toggleBtnStyle(false)}
       onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
       onMouseOut={(e) => e.currentTarget.style.background = '#fff'}>
-      {enlarged ? 'shrink' : 'enlarge'}
+      {enlarged ? t('controls.shrink') : t('controls.enlarge')}
     </button>
   );
 }
 
 export default function App({ graphData, customHeight, layout, storageKey, showMiniMap }) {
+  const { t } = useTranslation();
   const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
@@ -1008,8 +1011,8 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
                 toggleCollapseAll();
                 setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
               }}
-              title={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
-              aria-label={allGroupsCollapsed ? 'Expand all groups' : 'Collapse all groups'}
+              title={allGroupsCollapsed ? t('controls.expandAll') : t('controls.collapseAll')}
+              aria-label={allGroupsCollapsed ? t('controls.expandAll') : t('controls.collapseAll')}
             >
               {allGroupsCollapsed ? expandAllIcon : collapseAllIcon}
             </ControlButton>
@@ -1019,21 +1022,21 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
               relayout();
               setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
             }}
-            title="Auto layout: rearrange the diagram"
-            aria-label="Auto layout"
+            title={t('controls.autoLayout.title')}
+            aria-label={t('controls.autoLayout.label')}
           >
             {autoLayoutIcon}
           </ControlButton>
-          <ControlButton onClick={() => zoomIn()} title="Zoom in" aria-label="Zoom in">
+          <ControlButton onClick={() => zoomIn()} title={t('controls.zoomIn')} aria-label={t('controls.zoomIn')}>
             {zoomInIcon}
           </ControlButton>
-          <ControlButton onClick={() => zoomOut()} title="Zoom out" aria-label="Zoom out">
+          <ControlButton onClick={() => zoomOut()} title={t('controls.zoomOut')} aria-label={t('controls.zoomOut')}>
             {zoomOutIcon}
           </ControlButton>
           <ControlButton
             onClick={() => fitView({ padding: 0.3, maxZoom: 1 })}
-            title="Fit view"
-            aria-label="Fit view"
+            title={t('controls.fitView')}
+            aria-label={t('controls.fitView')}
           >
             {fitViewIcon}
           </ControlButton>
@@ -1050,9 +1053,9 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
                 style={toggleBtnStyle(showGroups)}
                 onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
                 onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
-                title="Render groups as containers around the concepts and properties that belong to them"
+                title={t('toolbar.showGroups.title')}
               >
-                Show groups
+                {t('toolbar.showGroups.label')}
               </button>
             )}
             {!isHierarchy && (
@@ -1064,9 +1067,9 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
                 style={toggleBtnStyle(showProperties)}
                 onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
                 onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
-                title="Show as Entity-Relationship Diagram — render properties inside concept and metric nodes"
+                title={t('toolbar.erd.title')}
               >
-                Show as Entity-Relationship-Diagram
+                {t('toolbar.erd.label')}
               </button>
             )}
             <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />

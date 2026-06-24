@@ -1,7 +1,9 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { ReactFlowProvider } from '@xyflow/react';
+import { I18nextProvider } from 'react-i18next';
 import App from './App';
+import i18n from './i18n';
 import { storageKeyFor } from './storage';
 import './index.css';
 
@@ -33,10 +35,15 @@ function initElement(container) {
     .then((data) => {
       if (!data.nodes || data.nodes.length === 0) { delete container.dataset.svInit; return; }
       container.style.height = height;
+      // Locale: a host-supplied data-locale wins (embedded, e.g. entropy-data). When
+      // absent, the language detector resolves it (?lang / localStorage / navigator). See src/i18n.
+      if (container.dataset.locale) i18n.changeLanguage(container.dataset.locale);
       createRoot(container).render(
-        <ReactFlowProvider>
-          <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} showMiniMap={showMiniMap} />
-        </ReactFlowProvider>
+        <I18nextProvider i18n={i18n}>
+          <ReactFlowProvider>
+            <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} showMiniMap={showMiniMap} />
+          </ReactFlowProvider>
+        </I18nextProvider>
       );
     })
     .catch((err) => { delete container.dataset.svInit; console.error('Semantic visualizer fetch error:', err); });

@@ -1,0 +1,49 @@
+{
+  "controls": {
+    "expandAll": "Expand all groups",
+    "collapseAll": "Collapse all groups",
+    "autoLayout": {
+      "title": "Auto layout: rearrange the diagram",
+      "label": "Auto layout"
+    },
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitView": "Fit view",
+    "enlarge": "enlarge",
+    "shrink": "shrink"
+  },
+  "toolbar": {
+    "showGroups": {
+      "label": "Show groups",
+      "title": "Render groups as containers around the concepts and properties that belong to them"
+    },
+    "erd": {
+      "label": "Show as Entity-Relationship-Diagram",
+      "title": "Show as Entity-Relationship Diagram — render properties inside concept and metric nodes"
+    }
+  },
+  "detail": {
+    "close": "Close",
+    "openDetails": "Open details →",
+    "properties": "Properties",
+    "inherited": "Inherited",
+    "noProperties": "No properties",
+    "noMembers": "No members",
+    "members": "Members ({{count}})",
+    "membersTotal": ", {{total}} total",
+    "type": {
+      "entity": "Entity",
+      "property": "Property",
+      "metric": "Metric",
+      "group": "Group"
+    },
+    "expandThisGroup": "Expand this group",
+    "collapseThisGroup": "Collapse this group"
+  },
+  "node": {
+    "noProperties": "No properties",
+    "group": "Group",
+    "expandGroup": "Expand group",
+    "collapseGroup": "Collapse group"
+  }
+}
