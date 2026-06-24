@@ -1,4 +1,5 @@
 import React, { useContext, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, Position, useStore } from '@xyflow/react';
 import { GroupActionsContext } from './GroupActionsContext';
 
@@ -154,6 +155,7 @@ const iconButtonStyle = (dimmed) => ({
 // Collapsed-group pill: a substantial card making clear this is a container,
 // not a leaf node. Contains a type tag, label, member count, and expand button.
 function CollapsedPill({ data, onToggle }) {
+  const { t } = useTranslation();
   const dimmed = data.dimmed;
   const count = data.memberCount;
   return (
@@ -192,15 +194,15 @@ function CollapsedPill({ data, onToggle }) {
           textTransform: 'uppercase',
           color: dimmed ? '#fdba74' : GROUP_COLOR,
         }}>
-          Group
+          {t('node.group')}
         </span>
         <div style={{ flex: 1 }} />
         <button
           type="button"
           onClick={onToggle}
           onMouseDown={(e) => e.stopPropagation()}
-          title="Expand group"
-          aria-label="Expand group"
+          title={t('node.expandGroup')}
+          aria-label={t('node.expandGroup')}
           style={iconButtonStyle(dimmed)}
         >
           <ExpandIcon />
@@ -241,6 +243,7 @@ function CollapsedPill({ data, onToggle }) {
 }
 
 export default function GroupNode({ id, data }) {
+  const { t } = useTranslation();
   const { toggleCollapse, collapsedSet } = useContext(GroupActionsContext);
   const collapsed = collapsedSet.has(id);
 
@@ -353,8 +356,8 @@ export default function GroupNode({ id, data }) {
             type="button"
             onClick={handleToggle}
             onMouseDown={(e) => e.stopPropagation()}
-            title="Collapse group"
-            aria-label="Collapse group"
+            title={t('node.collapseGroup')}
+            aria-label={t('node.collapseGroup')}
             style={iconButtonStyle(dimmed)}
           >
             <CollapseIcon />

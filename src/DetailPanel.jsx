@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const ACCENT_COLORS = {
   entity: '#3b82f6',
@@ -9,13 +10,14 @@ const ACCENT_COLORS = {
   collapsed_group: '#f97316',
 };
 
+// Maps node type -> i18n key; resolved with t() at the usage site.
 const TYPE_LABELS = {
-  entity: 'Entity',
-  property: 'Property',
-  shared_property: 'Property',
-  metric: 'Metric',
-  group: 'Group',
-  collapsed_group: 'Group',
+  entity: 'detail.type.entity',
+  property: 'detail.type.property',
+  shared_property: 'detail.type.property',
+  metric: 'detail.type.metric',
+  group: 'detail.type.group',
+  collapsed_group: 'detail.type.group',
 };
 
 const GROUP_TYPES = new Set(['group', 'collapsed_group']);
@@ -71,6 +73,7 @@ export default function DetailPanel({
   onExpandAll,
   onClose,
 }) {
+  const { t } = useTranslation();
   if (!node) return null;
 
   const type = node.type || 'entity';
@@ -112,7 +115,7 @@ export default function DetailPanel({
               color: accentColor,
               marginBottom: 4,
             }}>
-              {TYPE_LABELS[type] || 'Entity'}
+              {t(TYPE_LABELS[type] || 'detail.type.entity')}
             </div>
             {link ? (
               <a
@@ -154,7 +157,7 @@ export default function DetailPanel({
               flexShrink: 0,
               marginLeft: 8,
             }}
-            title="Close"
+            title={t('detail.close')}
           >
             ✕
           </button>
@@ -187,7 +190,7 @@ export default function DetailPanel({
             onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
             onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
           >
-            Open details →
+            {t('detail.openDetails')}
           </a>
         )}
       </div>
@@ -209,6 +212,7 @@ export default function DetailPanel({
 }
 
 function EntityBody({ node }) {
+  const { t } = useTranslation();
   const { description, properties = [] } = node.data;
   const ownProperties = properties.filter((p) => !p.inherited);
   const inheritedProperties = properties.filter((p) => p.inherited);
@@ -216,14 +220,14 @@ function EntityBody({ node }) {
   return (
     <div style={{ flex: 1, overflow: 'auto', padding: '0' }}>
       {ownProperties.length > 0 && (
-        <PropertySection title="Properties" properties={ownProperties} count={ownProperties.length} />
+        <PropertySection title={t('detail.properties')} properties={ownProperties} count={ownProperties.length} />
       )}
       {inheritedProperties.length > 0 && (
-        <PropertySection title="Inherited" properties={inheritedProperties} count={inheritedProperties.length} inherited />
+        <PropertySection title={t('detail.inherited')} properties={inheritedProperties} count={inheritedProperties.length} inherited />
       )}
       {properties.length === 0 && !description && (
         <div style={{ padding: 16, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>
-          No properties
+          {t('detail.noProperties')}
         </div>
       )}
     </div>
@@ -231,6 +235,7 @@ function EntityBody({ node }) {
 }
 
 function GroupBody({ node, graphData, isCollapsed, onToggleCollapse, onCollapseOthers, onExpandAll }) {
+  const { t } = useTranslation();
   // Collect direct and nested members.
   const directMembers = (graphData?.nodes || []).filter((n) => n.parentId === node.id);
   const nestedGroups = directMembers.filter((n) => n.type === 'group');
@@ -262,7 +267,7 @@ function GroupBody({ node, graphData, isCollapsed, onToggleCollapse, onCollapseO
       <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid #e5e7eb' }}>
         <ActionButton
           onClick={() => onToggleCollapse?.(node.id)}
-          label={isCollapsed ? 'Expand this group' : 'Collapse this group'}
+          label={isCollapsed ? t('detail.expandThisGroup') : t('detail.collapseThisGroup')}
           accent="#4f46e5"
         />
         <ActionButton
@@ -286,12 +291,12 @@ function GroupBody({ node, graphData, isCollapsed, onToggleCollapse, onCollapseO
         background: '#f9fafb',
         borderBottom: '1px solid #e5e7eb',
       }}>
-        Members ({directMembers.length}{deepMemberCount !== directMembers.length ? `, ${deepMemberCount} total` : ''})
+        {t('detail.members', { count: directMembers.length })}{deepMemberCount !== directMembers.length ? t('detail.membersTotal', { total: deepMemberCount }) : ''}
       </div>
 
       {directMembers.length === 0 ? (
         <div style={{ padding: 16, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>
-          No members
+          {t('detail.noMembers')}
         </div>
       ) : (
         directMembers.map((m) => <MemberRow key={m.id} member={m} />)
@@ -327,8 +332,9 @@ function ActionButton({ onClick, label, accent }) {
 }
 
 function MemberRow({ member }) {
+  const { t } = useTranslation();
   const type = member.type || 'entity';
-  const typeLabel = TYPE_LABELS[type] || 'Entity';
+  const typeLabel = t(TYPE_LABELS[type] || 'detail.type.entity');
   const icon = TYPE_ICON[type] || TYPE_ICON.entity;
   const { label, link } = member.data || {};
 
