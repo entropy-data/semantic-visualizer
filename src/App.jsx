@@ -851,9 +851,15 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
     if (selectedNode) {
       const activeNodes = new Set([selectedNode.id]);
       (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
+      // selected is passed separately from dimmed so the clicked node stands
+      // out against its (equally undimmed) 1-hop neighbors.
       return layouted.nodes.map((node) => ({
         ...node,
-        data: { ...node.data, dimmed: !activeNodes.has(node.id) },
+        data: {
+          ...node.data,
+          dimmed: !activeNodes.has(node.id),
+          selected: node.id === selectedNode.id,
+        },
       }));
     }
     const hasContext = layouted.nodes.some((n) => n.data?.searchMatch === false);

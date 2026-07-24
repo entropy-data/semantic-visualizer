@@ -57,13 +57,15 @@ export default function KnowledgeNode({ data, type }) {
       background: dimmed ? '#f8fafc' : bgColor,
       border: `2px solid ${dimmed ? '#e2e8f0' : accentColor}`,
       cursor: data.link ? 'pointer' : 'default',
-      boxShadow: data.highlight
+      boxShadow: data.selected
+        ? `0 0 0 3px #ffffff, 0 0 0 5px ${accentColor}, 0 0 16px ${accentColor}66`
+        : data.highlight
         ? `0 0 0 3px ${accentColor}40, 0 0 16px ${accentColor}30`
         : '0 1px 4px rgba(0,0,0,0.08)',
       whiteSpace: 'nowrap',
       minWidth: 0,
       opacity: dimmed ? 0.35 : 1,
-      transition: 'opacity 0.2s, border-color 0.2s, background 0.2s',
+      transition: 'opacity 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s',
     }}>
       <Handle type="target" position={Position.Top} id="top" style={handleStyle} />
       <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyle} />

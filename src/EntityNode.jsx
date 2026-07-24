@@ -65,7 +65,9 @@ export default function EntityNode({ data, type }) {
       borderRadius: 6,
       overflow: 'hidden',
       cursor: data.link ? 'pointer' : 'default',
-      boxShadow: data.highlight
+      boxShadow: data.selected
+        ? `0 0 0 3px #ffffff, 0 0 0 5px ${accentColor}, 0 0 16px ${accentColor}66`
+        : data.highlight
         ? `0 0 0 2px ${accentColor}, 0 0 12px ${accentColor}40`
         : '0 1px 3px rgba(0,0,0,0.06)',
     }}>

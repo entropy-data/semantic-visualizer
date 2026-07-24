@@ -18,7 +18,11 @@
   transition: d 250ms ease-out;
 }
 
-#semantic-visualizer .react-flow__node.selected {
+/* Knowledge/entity nodes draw their own selection halo (accent-colored ring via
+   data.selected in the node components) so the clicked node is distinguishable
+   from its highlighted neighbors. Keep the generic indigo outline only for
+   collapsed groups, which don't render a halo of their own. */
+#semantic-visualizer .react-flow__node-collapsed_group.selected {
   outline: 2px solid #6366f1;
   outline-offset: 2px;
   border-radius: 20px;
