@@ -2,13 +2,24 @@ name: license.yml
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: license-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  license:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: 18
+          node-version: 22
+          cache: npm
+      # license-checker inspects node_modules, so dependencies must be installed
+      # first — otherwise it finds nothing and the check passes vacuously.
+      - run: npm ci
       - run: npm install -g license-checker
       - run: ./check-licenses
