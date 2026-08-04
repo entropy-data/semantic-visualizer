@@ -1313,8 +1313,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         onToggleCollapse={toggleCollapse}
         onCollapseOthers={collapseOthers}
         onExpandAll={expandAll}
-        onSelectEdge={(e) => { setSelectedNode(null); setSelectedEdge(e); }}
-        onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
+        onSelectEdge={(e) => { setSelectedNode(null); setSelectedChangeId(null); setSelectedEdge(e); }}
+        // Closing has to clear the selected card too: leaving it set meant the panel fell straight
+        // through to the card's own view, so the close button looked like it had done nothing.
+        onClose={() => { setSelectedNode(null); setSelectedEdge(null); setSelectedChangeId(null); }}
       />
     </div>
     </GroupActionsContext.Provider>

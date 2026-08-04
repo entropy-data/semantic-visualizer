@@ -293,7 +293,7 @@ export default function DetailPanel({
           <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
           <RelatedChangesSection node={node} graphData={graphData} onSelectEdge={onSelectEdge} />
-          <EntityBody node={node} />
+          <EntityBody node={node} changesOnly={changesOnly} />
         </div>
       )}
     </div>
@@ -735,7 +735,7 @@ function ValueRow({ label, value, color, strike }) {
   );
 }
 
-function EntityBody({ node }) {
+function EntityBody({ node, changesOnly }) {
   const { t } = useTranslation();
   const { description, properties = [] } = node.data;
   const ownProperties = properties.filter((p) => !p.inherited);
