@@ -60,7 +60,7 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
   };
 
   return (
-    <div style={panelStyle}>
+    <div style={panelStyle} data-testid="review-panel">
       <div style={{ height: 4, background: '#6366f1', flexShrink: 0 }} />
 
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
@@ -78,6 +78,8 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
           return (
             <div
               key={change.externalId || '__namespace__'}
+              data-testid="review-card"
+              data-external-id={change.externalId}
               onClick={(e) => {
                 toggle(change.externalId, e.metaKey || e.ctrlKey || e.shiftKey);
                 onFocus?.(change.externalId);
