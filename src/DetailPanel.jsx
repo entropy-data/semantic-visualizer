@@ -697,17 +697,22 @@ function FieldChange({ change }) {
       }}>
         {change.field}
       </div>
-      <FieldDiff field={change.field} before={change.before} after={change.after}
-                 beforeBadge={change.beforeBadge} afterBadge={change.afterBadge} />
+      <FieldDiff field={change.field} before={change.before} after={change.after} />
     </div>
   );
 }
 
 
-// The application's own badge palette, as hex so it can be used inline. Mirrors the Tailwind classes
-// the classification badge partial applies (bg-{c}-50 / text-{c}-700 / ring-{c}-600/20) so a
-// classification looks the same here as everywhere else it appears.
-const BADGE_SCHEMES = {
+// --- Decorated values ------------------------------------------------------------------------
+//
+// A host may know things about a value that this component cannot: that "Confidential" is a governed
+// level with a colour and an icon of its own, that a tier outranks another. Rather than teach those
+// concepts here, any value in a change may arrive as `{ display: 'badge', label, color, icon }` and
+// is drawn as one wherever a plain value would have been — a field, a list item, a map entry.
+// `color` is a palette token, `icon` inline SVG the host is trusted for, exactly as it is trusted
+// for the labels beside it.
+
+const BADGE_PALETTE = {
   red: ['#fef2f2', '#b91c1c', '#fecaca'],
   orange: ['#fff7ed', '#c2410c', '#fed7aa'],
   amber: ['#fffbeb', '#b45309', '#fde68a'],
@@ -721,9 +726,9 @@ const BADGE_SCHEMES = {
   gray: ['#f9fafb', '#4b5563', '#e5e7eb'],
 };
 
-/** A stored badge — a classification and its own icon — drawn the way the application draws it. */
-function StoredBadge({ badge, strike }) {
-  const [bg, fg, ring] = BADGE_SCHEMES[(badge.colorScheme || 'gray').toLowerCase()] || BADGE_SCHEMES.gray;
+/** A value the host asked to be drawn as a badge. */
+function Badge({ badge, strike }) {
+  const [bg, fg, ring] = BADGE_PALETTE[(badge.color || 'gray').toLowerCase()] || BADGE_PALETTE.gray;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 6,
@@ -778,13 +783,16 @@ function TranslationKey({ name }) {
 // map of translations unreadable — one struck-through block where the reviewer needed to know which
 // locale moved.
 
-const BADGE_FIELDS = new Set(['classification', 'status', 'kind', 'element_type', 'better_when', 'owner']);
+// OSI's own small vocabularies: one value out of a handful, which reads better as a chip than as a
+// sentence. Governed values are not listed here — those arrive decorated and are recognised by shape.
+const ENUM_FIELDS = new Set(['status', 'kind', 'element_type', 'better_when']);
 const CODE_FIELDS = new Set(['pattern', 'formula', 'iri', 'data_type', 'extends', 'unit']);
 
 const isBlank = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
 const isList = (v) => Array.isArray(v);
-const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v) && !v.display;
 const isBool = (v) => typeof v === 'boolean';
+const isBadge = (v) => v !== null && typeof v === 'object' && v.display === 'badge';
 
 const chipStyle = (kind) => ({
   display: 'inline-block',
@@ -804,6 +812,7 @@ const chipStyle = (kind) => ({
 /** One value as a chip, so a small vocabulary reads as a value rather than a sentence. */
 function Chip({ value, kind, mono }) {
   const { t } = useTranslation();
+  if (isBadge(value)) return <Badge badge={value} strike={kind === 'remove'} />;
   if (isBlank(value)) {
     return <span style={{ ...chipStyle('same'), color: '#9ca3af', fontStyle: 'italic' }}>{t('detail.diff.unset')}</span>;
   }
@@ -815,28 +824,31 @@ function Chip({ value, kind, mono }) {
 }
 
 /** Old and new side by side. For one-of-a-few values, the arrow says more than two labelled rows. */
-function ChipTransition({ before, after, mono, beforeBadge, afterBadge }) {
+function ChipTransition({ before, after, mono }) {
   return (
     <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-      {beforeBadge ? <StoredBadge badge={beforeBadge} strike /> : <Chip value={before} kind="remove" mono={mono} />}
+      <Chip value={before} kind="remove" mono={mono} />
       <span style={{ color: '#9ca3af', fontSize: 12 }}>→</span>
-      {afterBadge ? <StoredBadge badge={afterBadge} /> : <Chip value={after} kind="add" mono={mono} />}
+      <Chip value={after} kind="add" mono={mono} />
     </div>
   );
 }
 
 /** A set difference: what stayed, what went, what arrived — rather than two printed lists. */
 function ListDiff({ before, after }) {
-  const b = (before || []).map(String);
-  const a = (after || []).map(String);
+  const key = (v) => (isBadge(v) ? `badge:${v.label}` : String(v));
+  const b = (before || []).map(key);
+  const a = (after || []).map(key);
+  const byKey = new Map([...(before || []), ...(after || [])].map((v) => [key(v), v]));
+  const chip = (k, kind) => <Chip key={kind + k} value={byKey.get(k)} kind={kind} />;
   const removed = b.filter((x) => !a.includes(x));
   const added = a.filter((x) => !b.includes(x));
   const kept = a.filter((x) => b.includes(x));
   return (
     <div style={{ marginTop: 3 }}>
-      {kept.map((v) => <Chip key={`k${v}`} value={v} kind="same" />)}
-      {removed.map((v) => <Chip key={`r${v}`} value={v} kind="remove" />)}
-      {added.map((v) => <Chip key={`a${v}`} value={v} kind="add" />)}
+      {kept.map((k) => chip(k, 'same'))}
+      {removed.map((k) => chip(k, 'remove'))}
+      {added.map((k) => chip(k, 'add'))}
     </div>
   );
 }
@@ -862,7 +874,9 @@ function MapDiff({ before, after }) {
             ? <Chip value={a[k]} kind="add" />
             : isBlank(a[k])
               ? <Chip value={b[k]} kind="remove" />
-              : <ProseDiff before={b[k]} after={a[k]} />}
+              : isBadge(b[k]) || isBadge(a[k])
+                ? <ChipTransition before={b[k]} after={a[k]} />
+                : <ProseDiff before={b[k]} after={a[k]} />}
         </div>
       ))}
     </div>
@@ -881,15 +895,12 @@ function ProseDiff({ before, after }) {
 }
 
 /** Picks the rendering from the value's shape, falling back to prose. */
-function FieldDiff({ field, before, after, beforeBadge, afterBadge }) {
-  if (field === 'custom_properties' || isMap(before) || isMap(after)) {
-    return <MapDiff before={before} after={after} />;
-  }
+function FieldDiff({ field, before, after }) {
+  if (isBadge(before) || isBadge(after)) return <ChipTransition before={before} after={after} />;
+  if (isMap(before) || isMap(after)) return <MapDiff before={before} after={after} />;
   if (isList(before) || isList(after)) return <ListDiff before={before} after={after} />;
   if (isBool(before) || isBool(after)) return <ChipTransition before={before} after={after} />;
-  if (beforeBadge || afterBadge || BADGE_FIELDS.has(field)) {
-    return <ChipTransition before={before} after={after} beforeBadge={beforeBadge} afterBadge={afterBadge} />;
-  }
+  if (ENUM_FIELDS.has(field)) return <ChipTransition before={before} after={after} />;
   if (CODE_FIELDS.has(field)) return <ChipTransition before={before} after={after} mono />;
   return <ProseDiff before={before} after={after} />;
 }
@@ -1189,8 +1200,7 @@ function PropertySection({ title, properties, count, inherited, changesOnly }) {
                 }}>
                   {f.field}
                 </div>
-                <FieldDiff field={f.field} before={f.before} after={f.after}
-                           beforeBadge={f.beforeBadge} afterBadge={f.afterBadge} />
+                <FieldDiff field={f.field} before={f.before} after={f.after} />
               </div>
             ))}
           </div>
