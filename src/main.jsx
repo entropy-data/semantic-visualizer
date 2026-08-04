@@ -87,6 +87,11 @@ export function init(options) {
 
   const height = options.height || '600px';
   container.style.height = height;
+  // Everything that reaches for its own container does so via `.semantic-visualizer` — the enlarge
+  // button among them, which silently did nothing when mounted this way because `closest()` found no
+  // such ancestor. Marking it initialised too keeps the auto-mount from claiming it as well.
+  container.classList.add('semantic-visualizer');
+  container.dataset.svInit = 'true';
   if (options.locale) i18n.changeLanguage(options.locale);
 
   const root = createRoot(container);
