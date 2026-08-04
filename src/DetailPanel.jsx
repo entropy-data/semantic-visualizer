@@ -697,11 +697,78 @@ function FieldChange({ change }) {
       }}>
         {change.field}
       </div>
-      <FieldDiff field={change.field} before={change.before} after={change.after} />
+      <FieldDiff field={change.field} before={change.before} after={change.after}
+                 beforeBadge={change.beforeBadge} afterBadge={change.afterBadge} />
     </div>
   );
 }
 
+
+// The application's own badge palette, as hex so it can be used inline. Mirrors the Tailwind classes
+// the classification badge partial applies (bg-{c}-50 / text-{c}-700 / ring-{c}-600/20) so a
+// classification looks the same here as everywhere else it appears.
+const BADGE_SCHEMES = {
+  red: ['#fef2f2', '#b91c1c', '#fecaca'],
+  orange: ['#fff7ed', '#c2410c', '#fed7aa'],
+  amber: ['#fffbeb', '#b45309', '#fde68a'],
+  yellow: ['#fefce8', '#854d0e', '#fef08a'],
+  green: ['#f0fdf4', '#15803d', '#bbf7d0'],
+  teal: ['#f0fdfa', '#0f766e', '#99f6e4'],
+  blue: ['#eff6ff', '#1d4ed8', '#bfdbfe'],
+  indigo: ['#eef2ff', '#4338ca', '#c7d2fe'],
+  purple: ['#faf5ff', '#7e22ce', '#e9d5ff'],
+  pink: ['#fdf2f8', '#be185d', '#fbcfe8'],
+  gray: ['#f9fafb', '#4b5563', '#e5e7eb'],
+};
+
+/** A stored badge — a classification and its own icon — drawn the way the application draws it. */
+function StoredBadge({ badge, strike }) {
+  const [bg, fg, ring] = BADGE_SCHEMES[(badge.colorScheme || 'gray').toLowerCase()] || BADGE_SCHEMES.gray;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 6,
+      padding: '2px 8px', fontSize: 11.5, fontWeight: 500,
+      background: bg, color: fg, border: `1px solid ${ring}`,
+      marginTop: 3, textDecoration: strike ? 'line-through' : 'none',
+    }}>
+      {badge.icon ? (
+        <span style={{ width: 14, height: 14, display: 'inline-flex' }}
+              dangerouslySetInnerHTML={{ __html: badge.icon }} />
+      ) : null}
+      {badge.label}
+    </span>
+  );
+}
+
+// A translation key names a locale, and a flag is how the application shows one.
+const LOCALE_FLAGS = {
+  de: '\u{1F1E9}\u{1F1EA}', fr: '\u{1F1EB}\u{1F1F7}', es: '\u{1F1EA}\u{1F1F8}', it: '\u{1F1EE}\u{1F1F9}',
+  nl: '\u{1F1F3}\u{1F1F1}', pt: '\u{1F1F5}\u{1F1F9}', pl: '\u{1F1F5}\u{1F1F1}', en: '\u{1F1EC}\u{1F1E7}',
+};
+
+/** `description@de` reads as a German description, not as a key with a suffix. */
+function TranslationKey({ name }) {
+  const at = name.lastIndexOf('@');
+  if (at < 0) {
+    return <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 10.5, color: '#6b7280' }}>{name}</span>;
+  }
+  const field = name.slice(0, at);
+  const locale = name.slice(at + 1).toLowerCase();
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 3, borderRadius: 4,
+        border: '1px solid #e5e7eb', background: '#fff', padding: '0 5px', fontSize: 10.5, color: '#374151',
+      }}>
+        <span>{LOCALE_FLAGS[locale] || '\u{1F310}'}</span>
+        <span style={{ fontWeight: 600, letterSpacing: '0.03em' }}>{locale.toUpperCase()}</span>
+      </span>
+      <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', color: '#6b7280' }}>
+        {field}
+      </span>
+    </span>
+  );
+}
 
 // --- Field rendering, by shape ---------------------------------------------------------------
 //
@@ -748,12 +815,12 @@ function Chip({ value, kind, mono }) {
 }
 
 /** Old and new side by side. For one-of-a-few values, the arrow says more than two labelled rows. */
-function ChipTransition({ before, after, mono }) {
+function ChipTransition({ before, after, mono, beforeBadge, afterBadge }) {
   return (
-    <div style={{ marginTop: 3 }}>
-      <Chip value={before} kind="remove" mono={mono} />
-      <span style={{ color: '#9ca3af', fontSize: 12, margin: '0 2px' }}>→</span>
-      <Chip value={after} kind="add" mono={mono} />
+    <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+      {beforeBadge ? <StoredBadge badge={beforeBadge} strike /> : <Chip value={before} kind="remove" mono={mono} />}
+      <span style={{ color: '#9ca3af', fontSize: 12 }}>→</span>
+      {afterBadge ? <StoredBadge badge={afterBadge} /> : <Chip value={after} kind="add" mono={mono} />}
     </div>
   );
 }
@@ -790,9 +857,7 @@ function MapDiff({ before, after }) {
     <div style={{ marginTop: 3 }}>
       {moved.map((k) => (
         <div key={k} style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 600, color: '#6b7280', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
-            {k}
-          </div>
+          <TranslationKey name={k} />
           {isBlank(b[k])
             ? <Chip value={a[k]} kind="add" />
             : isBlank(a[k])
@@ -816,13 +881,15 @@ function ProseDiff({ before, after }) {
 }
 
 /** Picks the rendering from the value's shape, falling back to prose. */
-function FieldDiff({ field, before, after }) {
+function FieldDiff({ field, before, after, beforeBadge, afterBadge }) {
   if (field === 'custom_properties' || isMap(before) || isMap(after)) {
     return <MapDiff before={before} after={after} />;
   }
   if (isList(before) || isList(after)) return <ListDiff before={before} after={after} />;
   if (isBool(before) || isBool(after)) return <ChipTransition before={before} after={after} />;
-  if (BADGE_FIELDS.has(field)) return <ChipTransition before={before} after={after} />;
+  if (beforeBadge || afterBadge || BADGE_FIELDS.has(field)) {
+    return <ChipTransition before={before} after={after} beforeBadge={beforeBadge} afterBadge={afterBadge} />;
+  }
   if (CODE_FIELDS.has(field)) return <ChipTransition before={before} after={after} mono />;
   return <ProseDiff before={before} after={after} />;
 }
@@ -1122,7 +1189,8 @@ function PropertySection({ title, properties, count, inherited, changesOnly }) {
                 }}>
                   {f.field}
                 </div>
-                <FieldDiff field={f.field} before={f.before} after={f.after} />
+                <FieldDiff field={f.field} before={f.before} after={f.after}
+                           beforeBadge={f.beforeBadge} afterBadge={f.afterBadge} />
               </div>
             ))}
           </div>
