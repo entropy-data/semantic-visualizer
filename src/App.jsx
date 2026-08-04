@@ -1293,11 +1293,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           const node = getNodes().find((n) => cardIdOf(n) === cardId);
           if (node) setSelectedNode(node);
         }}
-        onDecide={(decision, externalIds) => {
-          // The visualizer never talks to the API: it renders and reports. The host owns
-          // authentication and the write, so this stays embeddable without knowing either.
-          onDecide?.({ decision, externalIds });
-        }}
+        // Passed through only when the host actually supplied one. Wrapping it unconditionally made
+        // the panel see a callback that did nothing, so a read-only view still offered buttons and
+        // swallowed the click.
+        onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
       />
       <DetailPanel
         node={selectedNode}

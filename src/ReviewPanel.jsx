@@ -177,7 +177,9 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
         })}
       </div>
 
-      {selectedDecidable.length > 0 ? (
+      {/* No callback means the host cannot write — a read-only view must not offer an action it
+          would silently swallow. */}
+      {onDecide && selectedDecidable.length > 0 ? (
         <div style={{ borderTop: '1px solid #e5e7eb', padding: '12px 16px', flexShrink: 0 }}>
           <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
             {/* A box-selection routinely catches cards another team owns; say so before Accept, not after. */}
