@@ -133,6 +133,19 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
                 </div>
               ) : null}
 
+              {/* Who says so. For an agent's proposal this is the only answer a reviewer has, and an
+                  unresolvable citation is worth distinguishing from none at all. */}
+              {change.evidence?.length ? (
+                <div
+                  style={{ fontSize: 11, color: '#047857', marginTop: 4 }}
+                  title={change.evidence.map((e) => e.quote).join('\n\n')}
+                >
+                  {change.evidence.some((e) => e.resolvable === false)
+                    ? t('review.citedUnresolvable', 'Cited, not re-checkable')
+                    : t('review.cited', 'Cited · {{label}}', { label: change.evidence[0].label || '' })}
+                </div>
+              ) : null}
+
               {/* Accepting this alone may leave an edge behind. It must never be silent. */}
               {change.mergeNotes?.map((note) => (
                 <div key={note} style={{ fontSize: 11, color: '#b45309', marginTop: 4 }}>{note}</div>
