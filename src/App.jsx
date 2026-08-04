@@ -722,6 +722,11 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     changes.forEach((change) => (change.properties || []).forEach((p) => map.set(p.externalId, p)));
     return map;
   }, [changes]);
+  const relationshipChangeByExternalId = useMemo(() => {
+    const map = new Map();
+    changes.forEach((c) => (c.relationships || []).forEach((r) => map.set(r.externalId, r)));
+    return map;
+  }, [changes]);
   const cardIdOf = (node) => changeByExternalId.get(node?.data?.externalId)?.externalId;
 
   // The graph is the branch's state, so on its own it shows what the namespace *would* look like
@@ -731,6 +736,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     if (!changes.length) return sourceGraphData;
     return {
       ...sourceGraphData,
+      edges: (sourceGraphData.edges || []).map((edge) => {
+        const change = relationshipChangeByExternalId.get(edge.externalId);
+        return change ? { ...edge, diff: change.op, data: { ...edge.data, diff: change.op } } : edge;
+      }),
       nodes: sourceGraphData.nodes.map((node) => {
         const change = changeByExternalId.get(node.data?.externalId);
         // A property's own change belongs on its row, not on the concept: the concept may not have
@@ -744,12 +753,28 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
 
         // Only a card of its own marks the node: an inline property resolves to its concept's card,
         // and marking the concept with the property's op would overstate what changed.
-        const nodeDiff = change && change.externalId === node.data?.externalId ? change.op : undefined;
-        if (!nodeDiff && properties === node.data?.properties) return node;
-        return { ...node, data: { ...node.data, ...(nodeDiff ? { diff: nodeDiff } : {}), properties } };
+        const own = change && change.externalId === node.data?.externalId ? change : null;
+        if (!own && properties === node.data?.properties) return node;
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            properties,
+            ...(own ? {
+              diff: own.op,
+              // The panel already knows how to say "Does not exist yet. Approving this request
+              // creates it." and to lay out before/after — it was only ever missing the data.
+              diffDetail: { op: own.op, impact: own.impact?.toLowerCase(), fields: own.fields || [] },
+              evidence: own.evidence || [],
+              // Distinct from an empty list: nothing cited is a fact worth stating, not an absence
+              // worth hiding.
+              evidenceMissing: !own.evidence || own.evidence.length === 0,
+            } : {}),
+          },
+        };
       }),
     };
-  }, [sourceGraphData, changes, changeByExternalId, propertyChangeByExternalId]);
+  }, [sourceGraphData, changes, changeByExternalId, propertyChangeByExternalId, relationshipChangeByExternalId]);
   const [selectedEdge, setSelectedEdge] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
   // (which lives inside an entity node's property list) wouldn't be visible.
@@ -1114,10 +1139,24 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     setEdges(displayEdges);
   }
 
-  const onNodeClick = useCallback((_event, node) => {
+  const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
-    setSelectedNode((prev) => prev?.id === node.id ? null : node);
-  }, []);
+    const deselecting = selectedNode?.id === node.id;
+    setSelectedNode(deselecting ? null : node);
+
+    // The other half of one shared selection: picking a node in the graph picks its card, exactly as
+    // picking a card focuses its node. Without this the graph is somewhere to look rather than
+    // somewhere to work, and a reviewer has to find the same element twice.
+    const cardId = cardIdOf(node);
+    if (cardId === undefined) return;
+    const additive = event.metaKey || event.ctrlKey || event.shiftKey;
+    setSelectedChangeIds((prev) => {
+      const next = new Set(additive ? prev : []);
+      if (additive && prev.has(cardId)) next.delete(cardId);
+      else if (!(deselecting && !additive)) next.add(cardId);
+      return next;
+    });
+  }, [selectedNode, cardIdOf]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
   // is the only place a reviewer can see what a change request did to one.

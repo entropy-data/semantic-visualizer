@@ -89,7 +89,8 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
                 padding: '8px 10px',
                 marginBottom: 6,
                 cursor: 'pointer',
-                opacity: isDecided ? 0.55 : 1,
+                opacity: isDecided ? 0.55 : change.decidable === false ? 0.75 : 1,
+                background: change.decidable === false && !isDecided ? '#fafafa' : '#fff',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -116,8 +117,19 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
                 <span style={{ ...eyebrowStyle, fontSize: 10 }}>{change.elementType}</span>
               </div>
 
+              {/* Why a card will not respond, said on the card. Excluding it from the count is not an
+                  explanation, and a reviewer clicking Accept on someone else's element deserves to
+                  know before rather than after. */}
               {change.owningTeam ? (
-                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{change.owningTeam}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                  {change.owningTeam}
+                  {change.decidable === false && !change.decision ? (
+                    <span style={{ color: '#9ca3af' }}>
+                      {' · '}
+                      {t('review.notYours', "{{team}}'s to decide", { team: change.owningTeam })}
+                    </span>
+                  ) : null}
+                </div>
               ) : null}
 
               {/* What is folded into this entry rather than listed beside it. */}
