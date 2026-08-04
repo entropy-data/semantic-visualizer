@@ -142,7 +142,9 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
                 >
                   {change.evidence.some((e) => e.resolvable === false)
                     ? t('review.citedUnresolvable', 'Cited, not re-checkable')
-                    : t('review.cited', 'Cited · {{label}}', { label: change.evidence[0].label || '' })}
+                    : change.evidence[0].label
+                      ? t('review.citedFrom', 'Cited · {{label}}', { label: change.evidence[0].label })
+                      : t('review.cited', 'Cited')}
                 </div>
               ) : null}
 

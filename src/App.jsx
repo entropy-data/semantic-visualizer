@@ -695,7 +695,7 @@ function EnlargeButton({ customHeight, containerRef }) {
   );
 }
 
-export default function App({ graphData, changes: changesProp, onDecide, customHeight, layout, storageKey, showMiniMap }) {
+export default function App({ graphData: sourceGraphData, changes: changesProp, onDecide, customHeight, layout, storageKey, showMiniMap }) {
   const { t } = useTranslation();
   const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
   const containerRef = useRef(null);
@@ -703,16 +703,53 @@ export default function App({ graphData, changes: changesProp, onDecide, customH
   // Review selection is shared between the change list and the graph: one set, two views onto it.
   // Any graph element resolves to the card that governs it, so selecting a property node selects the
   // concept holding it and a box-selection collapses to distinct cards rather than to nodes.
-  const changes = changesProp || graphData.changes || [];
+  const changes = changesProp || sourceGraphData.changes || [];
   const [selectedChangeIds, setSelectedChangeIds] = useState(() => new Set());
-  const cardIdByNodeId = useMemo(() => {
+  // Keyed on the element's stable id, never the node id: a node's id is an internal UUID that means
+  // nothing to a change list, an export or a citation.
+  const changeByExternalId = useMemo(() => {
     const map = new Map();
     changes.forEach((change) => {
-      map.set(change.externalId, change.externalId);
-      (change.properties || []).forEach((p) => map.set(p.externalId, change.externalId));
+      map.set(change.externalId, change);
+      // An inline property is reviewed inside its concept, so its node resolves to that card.
+      (change.properties || []).forEach((p) => map.set(p.externalId, change));
     });
     return map;
   }, [changes]);
+  // A property's own change, keyed by its stable id — the concept's card carries these folded in.
+  const propertyChangeByExternalId = useMemo(() => {
+    const map = new Map();
+    changes.forEach((change) => (change.properties || []).forEach((p) => map.set(p.externalId, p)));
+    return map;
+  }, [changes]);
+  const cardIdOf = (node) => changeByExternalId.get(node?.data?.externalId)?.externalId;
+
+  // The graph is the branch's state, so on its own it shows what the namespace *would* look like
+  // without saying which parts are the proposal. The marks come from the change list rather than from
+  // the graph endpoint, which is generic and has no idea a proposal exists.
+  const graphData = useMemo(() => {
+    if (!changes.length) return sourceGraphData;
+    return {
+      ...sourceGraphData,
+      nodes: sourceGraphData.nodes.map((node) => {
+        const change = changeByExternalId.get(node.data?.externalId);
+        // A property's own change belongs on its row, not on the concept: the concept may not have
+        // moved at all, and marking it would say something untrue about it.
+        const properties = (node.data?.properties || []).map((property) => {
+          const propertyChange = propertyChangeByExternalId.get(property.externalId);
+          return propertyChange
+            ? { ...property, diff: propertyChange.op, diffDetail: { fields: propertyChange.fields || [] } }
+            : property;
+        });
+
+        // Only a card of its own marks the node: an inline property resolves to its concept's card,
+        // and marking the concept with the property's op would overstate what changed.
+        const nodeDiff = change && change.externalId === node.data?.externalId ? change.op : undefined;
+        if (!nodeDiff && properties === node.data?.properties) return node;
+        return { ...node, data: { ...node.data, ...(nodeDiff ? { diff: nodeDiff } : {}), properties } };
+      }),
+    };
+  }, [sourceGraphData, changes, changeByExternalId, propertyChangeByExternalId]);
   const [selectedEdge, setSelectedEdge] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
   // (which lives inside an entity node's property list) wouldn't be visible.
@@ -1214,7 +1251,7 @@ export default function App({ graphData, changes: changesProp, onDecide, customH
         selectedIds={selectedChangeIds}
         onSelectionChange={setSelectedChangeIds}
         onFocus={(cardId) => {
-          const node = getNodes().find((n) => cardIdByNodeId.get(n.id) === cardId || n.id === cardId);
+          const node = getNodes().find((n) => cardIdOf(n) === cardId);
           if (node) setSelectedNode(node);
         }}
         onDecide={(decision, externalIds) => {

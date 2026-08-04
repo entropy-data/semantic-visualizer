@@ -914,6 +914,16 @@ function PropertySection({ title, properties, count, inherited }) {
                 {prop.type}
               </span>
             )}
+            {/* A shared property is carried by several concepts, so a change to it reaches all of
+                them — which is exactly what a reviewer looking at one concept cannot otherwise see. */}
+            {prop.shared && (
+              <span style={{
+                fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
+                color: '#6366f1', border: '1px solid #c7d2fe', borderRadius: 3, padding: '0 4px',
+              }}>
+                {t('detail.shared', 'shared')}
+              </span>
+            )}
             {prop.primaryKey && <KeyIcon />}
             {prop.diff && (
               <span style={{
@@ -925,6 +935,11 @@ function PropertySection({ title, properties, count, inherited }) {
             )}
           </div>
         </div>
+        {prop.description && (
+          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, lineHeight: 1.4 }}>
+            {prop.description}
+          </div>
+        )}
         {/* The property is what changed, so its before and after belong on its row — not one level
             up on the concept, which did not change. */}
         {prop.diffDetail?.fields?.length > 0 && (
