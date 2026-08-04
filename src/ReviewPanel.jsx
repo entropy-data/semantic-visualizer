@@ -3,24 +3,42 @@ import { useTranslation } from 'react-i18next';
 import { DIFF_STYLES } from './diffStyles';
 
 /**
- * The list a reviewer works through, alongside the graph.
+ * The list a reviewer works through, mirroring [DetailPanel] on the opposite edge — same 4px accent
+ * bar, same borders and type scale, so the two read as one surface rather than two.
  *
- * One entry per changed concept. An inline property and a relationship are not entries of their own
- * — they are reviewed as part of the concept they hang off, and are summarised inside its entry. A
- * shared property does get its own entry, because its change lands on every concept carrying it.
+ * One entry per changed concept. An inline property and a relationship are not entries of their own:
+ * they are reviewed as part of the concept they hang off and summarised inside its entry. A shared
+ * property does get one, because its change lands on every concept carrying it and telling a reviewer
+ * they are changing a single concept would be untrue.
  *
- * Selection is shared with the graph rather than owned here: clicking an entry selects its node and
- * vice versa, and a box-selection in the graph fills this list. That is the whole reason the graph is
- * worth having as an instrument — it is where you can see that six changes are one coherent subgraph.
+ * Selection is shared with the graph rather than owned here — that is what makes the canvas an
+ * instrument, since it is where six changes can be seen to be one coherent subgraph.
  */
-export default function ReviewPanel({
-  changes,
-  selectedIds,
-  onSelectionChange,
-  onFocus,
-  onDecide,
-  height,
-}) {
+
+const panelStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  bottom: 0,
+  width: 300,
+  background: '#fff',
+  borderRight: '1px solid #e5e7eb',
+  boxShadow: '4px 0 12px rgba(0,0,0,0.08)',
+  zIndex: 10,
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+};
+
+const eyebrowStyle = {
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  color: '#6b7280',
+};
+
+export default function ReviewPanel({ changes, selectedIds, onSelectionChange, onFocus, onDecide }) {
   const { t } = useTranslation();
 
   const decidable = useMemo(
@@ -42,43 +60,69 @@ export default function ReviewPanel({
   };
 
   return (
-    <div className="sv-review-panel" style={{ height }}>
-      <div className="sv-review-panel__head">
-        <span className="sv-review-panel__title">{t('review.title', 'Proposal')}</span>
-        <span className="sv-review-panel__count">
+    <div style={panelStyle}>
+      <div style={{ height: 4, background: '#6366f1', flexShrink: 0 }} />
+
+      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+        <div style={eyebrowStyle}>{t('review.eyebrow', 'Proposal')}</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 2 }}>
           {t('review.pending', '{{count}} to review', { count: decidable.size })}
-        </span>
+        </div>
       </div>
 
-      <ul className="sv-review-panel__list">
+      <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
         {changes.map((change) => {
-          const style = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
+          const diff = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
           const isSelected = selectedIds.has(change.externalId);
+          const isDecided = Boolean(change.decision);
           return (
-            <li
+            <div
               key={change.externalId || '__namespace__'}
-              className={[
-                'sv-review-card',
-                isSelected ? 'is-selected' : '',
-                change.decision ? `is-${change.decision}` : '',
-              ].join(' ').trim()}
-              onClick={(e) => { toggle(change.externalId, e.metaKey || e.ctrlKey || e.shiftKey); onFocus?.(change.externalId); }}
+              onClick={(e) => {
+                toggle(change.externalId, e.metaKey || e.ctrlKey || e.shiftKey);
+                onFocus?.(change.externalId);
+              }}
+              style={{
+                border: `1px solid ${isSelected ? '#6366f1' : '#e5e7eb'}`,
+                boxShadow: isSelected ? '0 0 0 1px #6366f1' : 'none',
+                borderRadius: 6,
+                padding: '8px 10px',
+                marginBottom: 6,
+                cursor: 'pointer',
+                opacity: isDecided ? 0.55 : 1,
+              }}
             >
-              <div className="sv-review-card__head">
-                <span className="sv-review-card__badge" style={{ color: style.color, borderColor: style.color }}>
-                  {style.symbol}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 16,
+                    height: 16,
+                    border: `1px solid ${diff.color}`,
+                    borderRadius: 4,
+                    color: diff.color,
+                    fontSize: 11,
+                    lineHeight: 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  {diff.symbol}
                 </span>
-                <span className="sv-review-card__name">{change.name || change.externalId}</span>
-                <span className="sv-review-card__type">{change.elementType}</span>
+                <span style={{ fontWeight: 600, color: '#111827', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
+                  {change.name || change.externalId}
+                </span>
+                <span style={{ ...eyebrowStyle, fontSize: 10 }}>{change.elementType}</span>
               </div>
 
               {change.owningTeam ? (
-                <div className="sv-review-card__team">{change.owningTeam}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{change.owningTeam}</div>
               ) : null}
 
               {/* What is folded into this entry rather than listed beside it. */}
               {(change.properties?.length || change.relationships?.length) ? (
-                <div className="sv-review-card__folded">
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
                   {change.properties?.length
                     ? t('review.properties', '{{count}} properties', { count: change.properties.length })
                     : null}
@@ -89,39 +133,54 @@ export default function ReviewPanel({
                 </div>
               ) : null}
 
-              {change.evidence?.length ? (
-                <div className="sv-review-card__evidence">{t('review.cited', 'Cited')}</div>
-              ) : null}
-
-              {/* Invariant: accepting this alone may leave an edge behind. Never silent. */}
+              {/* Accepting this alone may leave an edge behind. It must never be silent. */}
               {change.mergeNotes?.map((note) => (
-                <div key={note} className="sv-review-card__note">{note}</div>
+                <div key={note} style={{ fontSize: 11, color: '#b45309', marginTop: 4 }}>{note}</div>
               ))}
 
               {change.decision ? (
-                <div className="sv-review-card__decision">{change.decision}</div>
+                <div style={{ fontSize: 11, color: '#374151', marginTop: 4, textTransform: 'capitalize' }}>
+                  {change.decision}
+                </div>
               ) : null}
-            </li>
+            </div>
           );
         })}
-      </ul>
+      </div>
 
       {selectedDecidable.length > 0 ? (
-        <div className="sv-review-panel__actions">
-          <span className="sv-review-panel__selection">
+        <div style={{ borderTop: '1px solid #e5e7eb', padding: '12px 16px', flexShrink: 0 }}>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
+            {/* A box-selection routinely catches cards another team owns; say so before Accept, not after. */}
             {selectedIds.size === selectedDecidable.length
               ? t('review.selected', '{{count}} selected', { count: selectedIds.size })
               : t('review.selectedPartial', '{{total}} selected, {{count}} you can decide', {
                 total: selectedIds.size,
                 count: selectedDecidable.length,
               })}
-          </span>
-          <button type="button" className="sv-review-panel__accept" onClick={() => onDecide('accepted', selectedDecidable)}>
-            {t('review.accept', 'Accept')}
-          </button>
-          <button type="button" className="sv-review-panel__reject" onClick={() => onDecide('rejected', selectedDecidable)}>
-            {t('review.reject', 'Reject')}
-          </button>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => onDecide('accepted', selectedDecidable)}
+              style={{
+                flex: 1, border: `1px solid ${DIFF_STYLES.add.color}`, color: DIFF_STYLES.add.color,
+                background: '#fff', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              {t('review.accept', 'Accept')}
+            </button>
+            <button
+              type="button"
+              onClick={() => onDecide('rejected', selectedDecidable)}
+              style={{
+                flex: 1, border: `1px solid ${DIFF_STYLES.remove.color}`, color: DIFF_STYLES.remove.color,
+                background: '#fff', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              {t('review.reject', 'Reject')}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

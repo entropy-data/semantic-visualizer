@@ -60,3 +60,54 @@ if (document.readyState === 'loading') {
 }
 
 document.addEventListener('htmx:load', mountAll);
+
+/**
+ * Explicit mount, for a host that has more to supply than a URL — currently the review screen, which
+ * passes a change list and needs a callback when a reviewer decides something.
+ *
+ * Deliberately shaped like the data contract editor's `init({...})` rather than inventing a
+ * convention: entropy-data already embeds components that way, and a callback is what lets this stay
+ * ignorant of authentication and of the endpoint behind it. The auto-mount above is untouched, so the
+ * read-only embeds keep working without knowing this exists.
+ *
+ * @param {object}   options
+ * @param {string|Element} options.container   selector or element to mount into
+ * @param {object}   options.graphData         `{nodes, edges}`, e.g. from the namespace graph endpoint
+ * @param {Array}    [options.changes]         review cards; omit for a plain graph
+ * @param {Function} [options.onDecide]        `({decision, externalIds}) => Promise<Array>` — resolves
+ *                                             to the updated change list
+ * @param {string}   [options.locale]
+ * @param {string}   [options.height]
+ */
+export function init(options) {
+  const container = typeof options.container === 'string'
+    ? document.querySelector(options.container)
+    : options.container;
+  if (!container) return null;
+
+  const height = options.height || '600px';
+  container.style.height = height;
+  if (options.locale) i18n.changeLanguage(options.locale);
+
+  const root = createRoot(container);
+  const render = (changes) => root.render(
+    <I18nextProvider i18n={i18n}>
+      <ReactFlowProvider>
+        <App
+          graphData={options.graphData}
+          changes={changes}
+          onDecide={options.onDecide}
+          customHeight={height}
+          layout={options.layout || 'force'}
+          storageKey={options.storageKey || storageKeyFor(options.container)}
+          showMiniMap={options.showMiniMap === true}
+        />
+      </ReactFlowProvider>
+    </I18nextProvider>
+  );
+
+  render(options.changes || []);
+  // The host owns the write, so it also owns the truth afterwards: whatever the callback resolves to
+  // replaces the list. Closing a round changes every row, not just the one that was decided.
+  return { update: (changes) => render(changes) };
+}

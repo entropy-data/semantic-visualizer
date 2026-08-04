@@ -695,7 +695,7 @@ function EnlargeButton({ customHeight, containerRef }) {
   );
 }
 
-export default function App({ graphData, customHeight, layout, storageKey, showMiniMap }) {
+export default function App({ graphData, changes: changesProp, onDecide, customHeight, layout, storageKey, showMiniMap }) {
   const { t } = useTranslation();
   const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
   const containerRef = useRef(null);
@@ -703,7 +703,7 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
   // Review selection is shared between the change list and the graph: one set, two views onto it.
   // Any graph element resolves to the card that governs it, so selecting a property node selects the
   // concept holding it and a box-selection collapses to distinct cards rather than to nodes.
-  const changes = graphData.changes || [];
+  const changes = changesProp || graphData.changes || [];
   const [selectedChangeIds, setSelectedChangeIds] = useState(() => new Set());
   const cardIdByNodeId = useMemo(() => {
     const map = new Map();
@@ -1212,19 +1212,15 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
       <ReviewPanel
         changes={changes}
         selectedIds={selectedChangeIds}
-        height={customHeight}
         onSelectionChange={setSelectedChangeIds}
         onFocus={(cardId) => {
           const node = getNodes().find((n) => cardIdByNodeId.get(n.id) === cardId || n.id === cardId);
           if (node) setSelectedNode(node);
         }}
         onDecide={(decision, externalIds) => {
-          // The visualizer never talks to the API: it renders and reports. The host page owns
-          // authentication and the POST, so this stays a pure component wherever it is embedded.
-          containerRef.current?.dispatchEvent(new CustomEvent('semantic-visualizer:decide', {
-            bubbles: true,
-            detail: { decision, externalIds },
-          }));
+          // The visualizer never talks to the API: it renders and reports. The host owns
+          // authentication and the write, so this stays embeddable without knowing either.
+          onDecide?.({ decision, externalIds });
         }}
       />
       <DetailPanel
