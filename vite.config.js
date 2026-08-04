@@ -9,6 +9,10 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: resolve(__dirname, 'src/main.jsx'),
+      // An app build drops the entry's exports, since nothing inside the bundle uses them — which
+      // silently removed `init` and would have made `import { init }` fail in the browser, on the one
+      // page that needs it, with nothing failing at build time. The auto-mount still runs either way.
+      preserveEntrySignatures: 'exports-only',
       output: {
         entryFileNames: 'assets/index.js',
         assetFileNames: 'assets/index.css',
