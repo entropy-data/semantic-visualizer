@@ -726,7 +726,37 @@ const BADGE_PALETTE = {
   gray: ['#f9fafb', '#4b5563', '#e5e7eb'],
 };
 
-/** A value the host asked to be drawn as a badge. */
+/**
+ * A decorated value the host can say more about than its text does. When it carries an `href` it is
+ * a way back to the thing itself — the level that says what "Confidential" obliges, the team taking
+ * ownership — which is exactly what a reviewer needs and cannot get from the word.
+ */
+function Decorated({ value, strike }) {
+  const linked = Boolean(value.href) && !strike;
+  // A badge is already a thing rather than a word, so it keeps its own colours and says it is
+  // clickable by being a badge. A plain value has nothing to go on, and hover is no help to someone
+  // who does not know there is anything to hover — so the link is underlined standing still.
+  const inner = value.display === 'badge' ? <Badge badge={value} strike={strike} /> : (
+    <span style={{
+      ...chipStyle('same'),
+      ...(linked ? { color: '#4338ca', borderColor: '#c7d2fe', background: '#eef2ff' } : {}),
+      textDecoration: strike ? 'line-through' : linked ? 'underline' : 'none',
+      textUnderlineOffset: 2,
+    }}>
+      {value.label}
+    </span>
+  );
+  if (!value.href) return inner;
+  return (
+    <a href={value.href} title={value.label}
+       style={{ textDecoration: 'none', display: 'inline-flex', borderRadius: 6 }}
+       onMouseOver={(e) => { e.currentTarget.style.opacity = 0.75; }}
+       onMouseOut={(e) => { e.currentTarget.style.opacity = 1; }}>
+      {inner}
+    </a>
+  );
+}
+
 function Badge({ badge, strike }) {
   const [bg, fg, ring] = BADGE_PALETTE[(badge.color || 'gray').toLowerCase()] || BADGE_PALETTE.gray;
   return (
@@ -792,7 +822,7 @@ const isBlank = (v) => v === null || v === undefined || v === '' || (Array.isArr
 const isList = (v) => Array.isArray(v);
 const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v) && !v.display;
 const isBool = (v) => typeof v === 'boolean';
-const isBadge = (v) => v !== null && typeof v === 'object' && v.display === 'badge';
+const isDecorated = (v) => v !== null && typeof v === 'object' && typeof v.display === 'string';
 
 const chipStyle = (kind) => ({
   display: 'inline-block',
@@ -812,12 +842,16 @@ const chipStyle = (kind) => ({
 /** One value as a chip, so a small vocabulary reads as a value rather than a sentence. */
 function Chip({ value, kind, mono }) {
   const { t } = useTranslation();
-  if (isBadge(value)) return <Badge badge={value} strike={kind === 'remove'} />;
+  if (isDecorated(value)) return <Decorated value={value} strike={kind === 'remove'} />;
   if (isBlank(value)) {
     return <span style={{ ...chipStyle('same'), color: '#9ca3af', fontStyle: 'italic' }}>{t('detail.diff.unset')}</span>;
   }
   return (
-    <span style={{ ...chipStyle(kind), ...(mono ? { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } : {}) }}>
+    <span style={{
+      ...chipStyle(kind),
+      // A pattern or formula can outrun the panel; it breaks inside its own border rather than past it.
+      ...(mono ? { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', maxWidth: '100%', overflowWrap: 'anywhere' } : {}),
+    }}>
       {String(value)}
     </span>
   );
@@ -828,15 +862,20 @@ function ChipTransition({ before, after, mono }) {
   return (
     <div style={{ marginTop: 3, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
       <Chip value={before} kind="remove" mono={mono} />
-      <span style={{ color: '#9ca3af', fontSize: 12 }}>→</span>
-      <Chip value={after} kind="add" mono={mono} />
+      {/* The arrow travels with the value it points at. A long value wrapping to the next line
+          otherwise strands the arrow at the end of the previous one, and the pair stops reading
+          as one transition. */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
+        <span style={{ color: '#9ca3af', fontSize: 12 }}>→</span>
+        <Chip value={after} kind="add" mono={mono} />
+      </span>
     </div>
   );
 }
 
 /** A set difference: what stayed, what went, what arrived — rather than two printed lists. */
 function ListDiff({ before, after }) {
-  const key = (v) => (isBadge(v) ? `badge:${v.label}` : String(v));
+  const key = (v) => (isDecorated(v) ? `d:${v.display}:${v.label}` : String(v));
   const b = (before || []).map(key);
   const a = (after || []).map(key);
   const byKey = new Map([...(before || []), ...(after || [])].map((v) => [key(v), v]));
@@ -874,7 +913,7 @@ function MapDiff({ before, after }) {
             ? <Chip value={a[k]} kind="add" />
             : isBlank(a[k])
               ? <Chip value={b[k]} kind="remove" />
-              : isBadge(b[k]) || isBadge(a[k])
+              : isDecorated(b[k]) || isDecorated(a[k])
                 ? <ChipTransition before={b[k]} after={a[k]} />
                 : <ProseDiff before={b[k]} after={a[k]} />}
         </div>
@@ -896,7 +935,7 @@ function ProseDiff({ before, after }) {
 
 /** Picks the rendering from the value's shape, falling back to prose. */
 function FieldDiff({ field, before, after }) {
-  if (isBadge(before) || isBadge(after)) return <ChipTransition before={before} after={after} />;
+  if (isDecorated(before) || isDecorated(after)) return <ChipTransition before={before} after={after} />;
   if (isMap(before) || isMap(after)) return <MapDiff before={before} after={after} />;
   if (isList(before) || isList(after)) return <ListDiff before={before} after={after} />;
   if (isBool(before) || isBool(after)) return <ChipTransition before={before} after={after} />;
