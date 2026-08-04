@@ -705,6 +705,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   // concept holding it and a box-selection collapses to distinct cards rather than to nodes.
   const changes = changesProp || sourceGraphData.changes || [];
   const [selectedChangeIds, setSelectedChangeIds] = useState(() => new Set());
+  const [selectedChangeId, setSelectedChangeId] = useState(null);
   // Keyed on the element's stable id, never the node id: a node's id is an internal UUID that means
   // nothing to a change list, an export or a citation.
   const changeByExternalId = useMemo(() => {
@@ -1149,6 +1150,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     // somewhere to work, and a reviewer has to find the same element twice.
     const cardId = cardIdOf(node);
     if (cardId === undefined) return;
+    setSelectedChangeId(deselecting ? null : cardId);
     const additive = event.metaKey || event.ctrlKey || event.shiftKey;
     setSelectedChangeIds((prev) => {
       const next = new Set(additive ? prev : []);
@@ -1290,8 +1292,11 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         selectedIds={selectedChangeIds}
         onSelectionChange={setSelectedChangeIds}
         onFocus={(cardId) => {
+          setSelectedChangeId(cardId);
           const node = getNodes().find((n) => cardIdOf(n) === cardId);
-          if (node) setSelectedNode(node);
+          // A card with no node still has something to show, so the panel is told either way.
+          setSelectedNode(node || null);
+          if (node) setSelectedEdge(null);
         }}
         // Passed through only when the host actually supplied one. Wrapping it unconditionally made
         // the panel see a callback that did nothing, so a read-only view still offered buttons and
@@ -1300,6 +1305,8 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
       />
       <DetailPanel
         node={selectedNode}
+        change={changes.find((c) => c.externalId === selectedChangeId) || null}
+        changesOnly={changesOnly}
         edge={selectedEdge}
         graphData={graphData}
         isCollapsed={selectedNode ? collapsedGroups.has(selectedNode.id) : false}

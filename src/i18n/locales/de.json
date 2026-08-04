@@ -90,7 +90,8 @@
       "heading": "Belege",
       "none": "Diese Änderung zitiert nichts. Sie lässt sich gegen keine Quelle prüfen.",
       "unresolvable": "Nicht erneut prüfbar — kein Repository, Pfad und Commit"
-    }
+    },
+    "propertiesChanged": ", {{count}} geändert"
   },
   "node": {
     "noProperties": "Keine Eigenschaften",

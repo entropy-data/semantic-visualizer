@@ -122,6 +122,8 @@ const KeyIcon = () => (
 export default function DetailPanel({
   node,
   edge,
+  change,
+  changesOnly,
   graphData,
   isCollapsed,
   onToggleCollapse,
@@ -132,6 +134,9 @@ export default function DetailPanel({
 }) {
   const { t } = useTranslation();
   if (edge) return <EdgePanel edge={edge} graphData={graphData} onClose={onClose} />;
+  // A change with no node behind it — the namespace's own, which is a card without a place on the
+  // canvas. Selecting it showed an empty panel, which read as the click having failed.
+  if (!node && change) return <ChangePanel change={change} onClose={onClose} />;
   if (!node) return null;
 
   const type = node.type || 'entity';
@@ -360,6 +365,40 @@ function EdgePanel({ edge, graphData, onClose }) {
  * in a document somewhere else. An element changed with nothing cited is called out: absence of
  * evidence is the thing worth noticing, and it is invisible unless stated.
  */
+/**
+ * The detail view for a card with nothing to select in the graph — today the namespace's own change.
+ * Reuses [DiffSection] rather than inventing a second way to show a before and after.
+ */
+function ChangePanel({ change, onClose }) {
+  const { t } = useTranslation();
+  const diff = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
+  return (
+    <div style={panelStyle}>
+      <div style={{ height: 4, background: diff.color, flexShrink: 0 }} />
+      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
+              textTransform: 'uppercase', color: '#6b7280',
+            }}>
+              {change.elementType}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', wordBreak: 'break-word' }}>
+              {change.name || change.externalId}
+            </div>
+          </div>
+          <button onClick={onClose} style={closeButtonStyle} aria-label="Close">×</button>
+        </div>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <DiffSection detail={{ op: change.op, impact: change.impact?.toLowerCase(), fields: change.fields || [] }} />
+        <EvidenceSection evidence={change.evidence} missing={!change.evidence || change.evidence.length === 0} />
+      </div>
+    </div>
+  );
+}
+
 function EvidenceSection({ evidence, missing }) {
   const { t } = useTranslation();
   const items = evidence || [];
@@ -705,10 +744,12 @@ function EntityBody({ node }) {
   return (
     <div>
       {ownProperties.length > 0 && (
-        <PropertySection title={t('detail.properties')} properties={ownProperties} count={ownProperties.length} />
+        <PropertySection title={t('detail.properties')} properties={ownProperties}
+                         count={ownProperties.length} changesOnly={changesOnly} />
       )}
       {inheritedProperties.length > 0 && (
-        <PropertySection title={t('detail.inherited')} properties={inheritedProperties} count={inheritedProperties.length} inherited />
+        <PropertySection title={t('detail.inherited')} properties={inheritedProperties}
+                         count={inheritedProperties.length} inherited changesOnly={changesOnly} />
       )}
       {properties.length === 0 && !description && (
         <div style={{ padding: 16, fontSize: 13, color: '#9ca3af', textAlign: 'center' }}>
@@ -872,14 +913,19 @@ function MemberRow({ member }) {
   return row;
 }
 
-function PropertySection({ title, properties, count, inherited }) {
+function PropertySection({ title, properties, count, inherited, changesOnly }) {
   const { t } = useTranslation();
+  const changed = properties.filter((p) => p.diff);
+  const shown = changesOnly ? changed : properties;
+  if (shown.length === 0) return null;
   return (
     <div>
+      {/* The total and how much of it moved: with fourteen properties and one change, the count is
+          what tells a reviewer whether they are looking at a rewrite or a typo. */}
       <div style={sectionHeaderStyle}>
-        {title} ({count})
+        {title} ({count}{changed.length > 0 ? t('detail.propertiesChanged', { count: changed.length }) : ''})
       </div>
-      {properties.map((prop, i) => (
+      {shown.map((prop, i) => (
         <div
           key={i}
           style={{

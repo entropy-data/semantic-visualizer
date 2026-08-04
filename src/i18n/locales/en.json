@@ -90,7 +90,8 @@
       "heading": "Evidence",
       "none": "This change cites nothing. It cannot be checked against a source.",
       "unresolvable": "Cannot be checked again — no repository, path and commit"
-    }
+    },
+    "propertiesChanged": ", {{count}} changed"
   },
   "node": {
     "noProperties": "No properties",
