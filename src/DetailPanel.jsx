@@ -697,10 +697,134 @@ function FieldChange({ change }) {
       }}>
         {change.field}
       </div>
-      <ValueRow label={t('detail.diff.before')} value={change.before} color="#dc2626" strike />
-      <ValueRow label={t('detail.diff.after')} value={change.after} color="#16a34a" />
+      <FieldDiff field={change.field} before={change.before} after={change.after} />
     </div>
   );
+}
+
+
+// --- Field rendering, by shape ---------------------------------------------------------------
+//
+// A change is not always prose. A classification is one value from a small set, `required` is a
+// state, `examples` is a set of items, and `custom_properties` holds translations keyed by locale.
+// Rendering all of them as before-and-after paragraphs made the small changes hard to see and the
+// map of translations unreadable — one struck-through block where the reviewer needed to know which
+// locale moved.
+
+const BADGE_FIELDS = new Set(['classification', 'status', 'kind', 'element_type', 'better_when', 'owner']);
+const CODE_FIELDS = new Set(['pattern', 'formula', 'iri', 'data_type', 'extends', 'unit']);
+
+const isBlank = (v) => v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+const isList = (v) => Array.isArray(v);
+const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const isBool = (v) => typeof v === 'boolean';
+
+const chipStyle = (kind) => ({
+  display: 'inline-block',
+  fontSize: 11.5,
+  padding: '1px 7px',
+  borderRadius: 4,
+  border: '1px solid',
+  marginRight: 4,
+  marginTop: 3,
+  ...(kind === 'add'
+    ? { color: '#15803d', borderColor: '#bbf7d0', background: '#f0fdf4' }
+    : kind === 'remove'
+      ? { color: '#b91c1c', borderColor: '#fecaca', background: '#fef2f2', textDecoration: 'line-through' }
+      : { color: '#374151', borderColor: '#e5e7eb', background: '#f9fafb' }),
+});
+
+/** One value as a chip, so a small vocabulary reads as a value rather than a sentence. */
+function Chip({ value, kind, mono }) {
+  const { t } = useTranslation();
+  if (isBlank(value)) {
+    return <span style={{ ...chipStyle('same'), color: '#9ca3af', fontStyle: 'italic' }}>{t('detail.diff.unset')}</span>;
+  }
+  return (
+    <span style={{ ...chipStyle(kind), ...(mono ? { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' } : {}) }}>
+      {String(value)}
+    </span>
+  );
+}
+
+/** Old and new side by side. For one-of-a-few values, the arrow says more than two labelled rows. */
+function ChipTransition({ before, after, mono }) {
+  return (
+    <div style={{ marginTop: 3 }}>
+      <Chip value={before} kind="remove" mono={mono} />
+      <span style={{ color: '#9ca3af', fontSize: 12, margin: '0 2px' }}>→</span>
+      <Chip value={after} kind="add" mono={mono} />
+    </div>
+  );
+}
+
+/** A set difference: what stayed, what went, what arrived — rather than two printed lists. */
+function ListDiff({ before, after }) {
+  const b = (before || []).map(String);
+  const a = (after || []).map(String);
+  const removed = b.filter((x) => !a.includes(x));
+  const added = a.filter((x) => !b.includes(x));
+  const kept = a.filter((x) => b.includes(x));
+  return (
+    <div style={{ marginTop: 3 }}>
+      {kept.map((v) => <Chip key={`k${v}`} value={v} kind="same" />)}
+      {removed.map((v) => <Chip key={`r${v}`} value={v} kind="remove" />)}
+      {added.map((v) => <Chip key={`a${v}`} value={v} kind="add" />)}
+    </div>
+  );
+}
+
+/**
+ * A map, key by key. Translations live here, and a reviewer's question is which locale changed —
+ * not what the whole map used to print as.
+ */
+function MapDiff({ before, after }) {
+  const b = isMap(before) ? before : {};
+  const a = isMap(after) ? after : {};
+  // `evidence` rides in custom_properties but has a section of its own above; showing the raw
+  // entry here would print the same citation twice, once unreadably.
+  const keys = [...new Set([...Object.keys(b), ...Object.keys(a)])].filter((k) => k !== 'evidence').sort();
+  const moved = keys.filter((k) => JSON.stringify(b[k]) !== JSON.stringify(a[k]));
+  if (moved.length === 0) return null;
+  return (
+    <div style={{ marginTop: 3 }}>
+      {moved.map((k) => (
+        <div key={k} style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, color: '#6b7280', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+            {k}
+          </div>
+          {isBlank(b[k])
+            ? <Chip value={a[k]} kind="add" />
+            : isBlank(a[k])
+              ? <Chip value={b[k]} kind="remove" />
+              : <ProseDiff before={b[k]} after={a[k]} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The original treatment, kept for what it suits: sentences. */
+function ProseDiff({ before, after }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <ValueRow label={t('detail.diff.before')} value={before} color="#dc2626" strike />
+      <ValueRow label={t('detail.diff.after')} value={after} color="#16a34a" />
+    </>
+  );
+}
+
+/** Picks the rendering from the value's shape, falling back to prose. */
+function FieldDiff({ field, before, after }) {
+  if (field === 'custom_properties' || isMap(before) || isMap(after)) {
+    return <MapDiff before={before} after={after} />;
+  }
+  if (isList(before) || isList(after)) return <ListDiff before={before} after={after} />;
+  if (isBool(before) || isBool(after)) return <ChipTransition before={before} after={after} />;
+  if (BADGE_FIELDS.has(field)) return <ChipTransition before={before} after={after} />;
+  if (CODE_FIELDS.has(field)) return <ChipTransition before={before} after={after} mono />;
+  return <ProseDiff before={before} after={after} />;
 }
 
 function ValueRow({ label, value, color, strike }) {
@@ -998,8 +1122,7 @@ function PropertySection({ title, properties, count, inherited, changesOnly }) {
                 }}>
                   {f.field}
                 </div>
-                <ValueRow label={t('detail.diff.before')} value={f.before} color="#dc2626" strike />
-                <ValueRow label={t('detail.diff.after')} value={f.after} color="#16a34a" />
+                <FieldDiff field={f.field} before={f.before} after={f.after} />
               </div>
             ))}
           </div>
