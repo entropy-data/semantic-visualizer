@@ -62,3 +62,52 @@
   stroke: #888 !important;
   stroke-width: 2.5px !important;
 }
+
+/* --- Review panel -------------------------------------------------------
+   The change list beside the graph. Selection is shared with the canvas, so a
+   card's selected state and a node's have to read as the same thing. */
+.sv-review-panel {
+  position: absolute; top: 0; left: 0; z-index: 5;
+  width: 260px; display: flex; flex-direction: column;
+  background: #fff; border-right: 1px solid #e5e7eb; font-size: 13px;
+}
+.sv-review-panel__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding: 10px 12px; border-bottom: 1px solid #e5e7eb;
+}
+.sv-review-panel__title { font-weight: 600; }
+.sv-review-panel__count { color: #6b7280; font-size: 12px; }
+.sv-review-panel__list { flex: 1; overflow-y: auto; margin: 0; padding: 8px; list-style: none; }
+
+.sv-review-card {
+  border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer;
+}
+.sv-review-card:hover { border-color: #d1d5db; }
+.sv-review-card.is-selected { border-color: #6366f1; box-shadow: 0 0 0 1px #6366f1; }
+.sv-review-card.is-accepted { opacity: 0.55; }
+.sv-review-card.is-rejected { opacity: 0.55; }
+
+.sv-review-card__head { display: flex; align-items: center; gap: 6px; }
+.sv-review-card__badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border: 1px solid; border-radius: 4px; font-size: 11px; line-height: 1;
+}
+.sv-review-card__name { font-weight: 500; flex: 1; }
+.sv-review-card__type { color: #9ca3af; font-size: 11px; }
+.sv-review-card__team { color: #6b7280; font-size: 11px; margin-top: 2px; }
+.sv-review-card__folded { color: #6b7280; font-size: 11px; margin-top: 4px; }
+.sv-review-card__evidence { color: #059669; font-size: 11px; margin-top: 4px; }
+/* A merge note says what accepting this alone would leave out. It must not read as decoration. */
+.sv-review-card__note { color: #b45309; font-size: 11px; margin-top: 4px; }
+.sv-review-card__decision { font-size: 11px; margin-top: 4px; text-transform: capitalize; }
+
+.sv-review-panel__actions {
+  border-top: 1px solid #e5e7eb; padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.sv-review-panel__selection { flex: 1 1 100%; color: #6b7280; font-size: 11px; }
+.sv-review-panel__accept,
+.sv-review-panel__reject {
+  border: 1px solid #d1d5db; border-radius: 6px; background: #fff; padding: 4px 10px; cursor: pointer; font-size: 12px;
+}
+.sv-review-panel__accept { border-color: #16a34a; color: #16a34a; }
+.sv-review-panel__reject { border-color: #dc2626; color: #dc2626; }

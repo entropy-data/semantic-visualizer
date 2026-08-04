@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Position } from '@xyflow/react';
+import { DIFF_STYLES } from './diffStyles';
 
 const MAX_VISIBLE_PROPERTIES = 8;
 
@@ -46,8 +47,9 @@ export default function EntityNode({ data, type }) {
   const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
   const hideProperties = data.hideProperties;
   const allProperties = hideProperties ? [] : (data.properties || []);
-  // Auto-expand if a highlighted property would otherwise be hidden behind "+N more".
-  const highlightHidden = allProperties.some((p, i) => p.highlight && i >= MAX_VISIBLE_PROPERTIES);
+  // Auto-expand if a highlighted or changed property would otherwise be hidden behind "+N more".
+  // A change a reviewer has to click to discover is a change they will approve without reading.
+  const highlightHidden = allProperties.some((p, i) => (p.highlight || p.diff) && i >= MAX_VISIBLE_PROPERTIES);
   const [expanded, setExpanded] = useState(highlightHidden);
   const hasMore = !expanded && allProperties.length > MAX_VISIBLE_PROPERTIES;
   const properties = hasMore ? allProperties.slice(0, MAX_VISIBLE_PROPERTIES) : allProperties;
@@ -59,18 +61,44 @@ export default function EntityNode({ data, type }) {
     setExpanded((v) => !v);
   };
 
+  // How a pending change request would affect this concept. Rendered as a ring and a corner label
+  // rather than by recolouring the node, so the type accent still reads: a reviewer needs to see
+  // *what* a concept is at the same time as what happens to it.
+  const diff = DIFF_STYLES[data.diff];
+  // A concept can be untouched itself and still be where the change lands, when the request only
+  // edits one of its properties. The rows below say which one; this is what carries that across a
+  // graph, where rows are unreadable until you zoom in.
+  const changedProperties = data.changedPropertyCount || 0;
+  const ring = diff || (changedProperties > 0 ? DIFF_STYLES.modify : null);
+  const ringLabel = diff ? diff.label : t('node.propertiesChanged', { count: changedProperties });
+
   return (
     <div style={{
       minWidth: 220,
       borderRadius: 6,
       overflow: 'hidden',
+      position: 'relative',
+      // Context kept by the changes-only filter recedes. Without this an entity-relationship view
+      // renders a changed concept's neighbours as loudly as the change itself.
+      opacity: data.dimmed ? 0.4 : data.diff === 'remove' ? 0.65 : 1,
       cursor: data.link ? 'pointer' : 'default',
-      boxShadow: data.selected
+      boxShadow: ring
+        ? `0 0 0 3px ${ring.color}, 0 0 14px ${ring.color}55`
+        : data.selected
         ? `0 0 0 3px #ffffff, 0 0 0 5px ${accentColor}, 0 0 16px ${accentColor}66`
         : data.highlight
         ? `0 0 0 2px ${accentColor}, 0 0 12px ${accentColor}40`
         : '0 1px 3px rgba(0,0,0,0.06)',
     }}>
+      {ring && (
+        <div style={{
+          position: 'absolute', top: 0, right: 0, zIndex: 1,
+          background: ring.color, color: '#fff',
+          font: '600 10px/1 ui-sans-serif, system-ui, sans-serif',
+          letterSpacing: '0.06em', textTransform: 'uppercase',
+          padding: '3px 6px', borderBottomLeftRadius: 6,
+        }}>{ringLabel}</div>
+      )}
       <Handle type="target" position={Position.Top} id="top" style={handleStyle} />
       <Handle type="source" position={Position.Bottom} id="bottom" style={handleStyle} />
 
@@ -112,7 +140,13 @@ export default function EntityNode({ data, type }) {
         <div style={{ background: '#fff' }}>
           {properties.length > 0 ? (
             <>
-              {properties.map((prop, i) => (
+              {properties.map((prop, i) => {
+                // The rail and tint follow the diff colour rather than the property accent, so a
+                // changed property reads the same as a changed concept or relationship elsewhere in
+                // the graph. Search highlighting keeps the green accent it always had.
+                const propDiff = DIFF_STYLES[prop.diff];
+                const rail = propDiff ? propDiff.color : prop.highlight ? ACCENT_COLORS.property : null;
+                return (
                 <div
                   key={i}
                   style={{
@@ -122,15 +156,16 @@ export default function EntityNode({ data, type }) {
                     padding: '5px 10px',
                     borderTop: '1px solid #E9EEF4',
                     gap: 8,
-                    background: prop.highlight ? `${ACCENT_COLORS.property}1a` : 'transparent',
-                    boxShadow: prop.highlight ? `inset 3px 0 0 ${ACCENT_COLORS.property}` : 'none',
+                    background: rail ? `${rail}1a` : 'transparent',
+                    boxShadow: rail ? `inset 3px 0 0 ${rail}` : 'none',
                   }}
                 >
                   <span style={{
                     fontSize: 13,
-                    fontWeight: prop.highlight ? 700 : 500,
+                    fontWeight: prop.highlight || propDiff ? 700 : 500,
                     color: prop.inherited ? '#9ca3af' : '#111827',
                     fontStyle: prop.inherited ? 'italic' : 'normal',
+                    textDecoration: prop.diff === 'remove' ? 'line-through' : 'none',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
@@ -140,7 +175,15 @@ export default function EntityNode({ data, type }) {
                     {prop.name}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                    {prop.type && (
+                    {propDiff ? (
+                      <span style={{
+                        color: propDiff.color,
+                        font: '600 10px/1 ui-sans-serif, system-ui, sans-serif',
+                        letterSpacing: '0.06em', textTransform: 'uppercase',
+                      }}>
+                        {t(`detail.diff.op.${prop.diff}`)}
+                      </span>
+                    ) : prop.type && (
                       <span style={{ fontSize: 11, color: '#9ca3af' }}>
                         {prop.type}
                       </span>
@@ -148,7 +191,8 @@ export default function EntityNode({ data, type }) {
                     {prop.primaryKey && <KeyIcon />}
                   </div>
                 </div>
-              ))}
+                );
+              })}
               {(hasMore || (expanded && allProperties.length > MAX_VISIBLE_PROPERTIES)) && (
                 <div
                   onClick={toggleExpand}

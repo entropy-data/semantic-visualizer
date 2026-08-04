@@ -20,6 +20,10 @@
     "erd": {
       "label": "Show as Entity-Relationship-Diagram",
       "title": "Show as Entity-Relationship Diagram — render properties inside concept and metric nodes"
+    },
+    "changesOnly": {
+      "label": "Changes only",
+      "title": "Show only the concepts and relationships this change request touches"
     }
   },
   "detail": {
@@ -35,15 +39,65 @@
       "entity": "Entity",
       "property": "Property",
       "metric": "Metric",
-      "group": "Group"
+      "group": "Group",
+      "relationship": "Relationship"
     },
     "expandThisGroup": "Expand this group",
-    "collapseThisGroup": "Collapse this group"
+    "collapseThisGroup": "Collapse this group",
+    "diff": {
+      "heading": "Proposed change",
+      "op": {
+        "add": "Added",
+        "modify": "Changed",
+        "remove": "Removed"
+      },
+      "impact": {
+        "structural": "Structural",
+        "descriptive": "Descriptive",
+        "cosmetic": "Cosmetic"
+      },
+      "impactHint": {
+        "structural": "Changes what the model means.",
+        "descriptive": "Changes how the model reads, not what it means.",
+        "cosmetic": "Wording only."
+      },
+      "summary": {
+        "add": "Does not exist yet. Approving this request creates it.",
+        "remove": "Approving this request deletes it.",
+        "modify": "Approving this request applies the following."
+      },
+      "before": "Now",
+      "after": "Proposed",
+      "unset": "not set",
+      "related": "Changed relationships"
+    },
+    "consumers": {
+      "heading": "Breaks on removal",
+      "description": "These depend on this concept and do not decide this change. Removing it leaves their references broken.",
+      "relationship": "relationships in other namespaces",
+      "dataProduct": "data products",
+      "dataContract": "data contracts"
+    },
+    "overlap": {
+      "heading": "Also being changed",
+      "description": "Another pending change request edits this element too. Approving this one reshapes the other onto the new state, which usually merges cleanly.",
+      "view": "View the other change request"
+    },
+    "externalNamespace": "Lives in namespace {{namespace}}",
+    "unresolved": "This concept does not exist. A relationship in this change request points at it, so the request cannot be applied as it stands.",
+    "unresolvedRemovedBy": "See the change request that removed it",
+    "evidence": {
+      "heading": "Evidence",
+      "none": "This change cites nothing. It cannot be checked against a source.",
+      "unresolvable": "Cannot be checked again — no repository, path and commit"
+    }
   },
   "node": {
     "noProperties": "No properties",
     "group": "Group",
     "expandGroup": "Expand group",
-    "collapseGroup": "Collapse group"
+    "collapseGroup": "Collapse group",
+    "propertiesChanged_one": "{{count}} property changed",
+    "propertiesChanged_other": "{{count}} properties changed"
   }
 }

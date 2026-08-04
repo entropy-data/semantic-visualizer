@@ -20,6 +20,10 @@
     "erd": {
       "label": "Als Entity-Relationship-Diagramm anzeigen",
       "title": "Als Entity-Relationship-Diagramm anzeigen — Eigenschaften innerhalb der Konzept- und Metrik-Knoten darstellen"
+    },
+    "changesOnly": {
+      "label": "Nur Änderungen",
+      "title": "Nur die Konzepte und Beziehungen anzeigen, die dieser Change Request betrifft"
     }
   },
   "detail": {
@@ -35,15 +39,65 @@
       "entity": "Entität",
       "property": "Eigenschaft",
       "metric": "Metrik",
-      "group": "Gruppe"
+      "group": "Gruppe",
+      "relationship": "Beziehung"
     },
     "expandThisGroup": "Diese Gruppe aufklappen",
-    "collapseThisGroup": "Diese Gruppe einklappen"
+    "collapseThisGroup": "Diese Gruppe einklappen",
+    "diff": {
+      "heading": "Vorgeschlagene Änderung",
+      "op": {
+        "add": "Hinzugefügt",
+        "modify": "Geändert",
+        "remove": "Entfernt"
+      },
+      "impact": {
+        "structural": "Strukturell",
+        "descriptive": "Beschreibend",
+        "cosmetic": "Kosmetisch"
+      },
+      "impactHint": {
+        "structural": "Ändert die Bedeutung des Modells.",
+        "descriptive": "Ändert die Lesart des Modells, nicht seine Bedeutung.",
+        "cosmetic": "Nur die Formulierung."
+      },
+      "summary": {
+        "add": "Existiert noch nicht. Mit der Freigabe dieses Requests wird es angelegt.",
+        "remove": "Mit der Freigabe dieses Requests wird es gelöscht.",
+        "modify": "Mit der Freigabe dieses Requests wird Folgendes übernommen."
+      },
+      "before": "Aktuell",
+      "after": "Vorgeschlagen",
+      "unset": "nicht gesetzt",
+      "related": "Geänderte Beziehungen"
+    },
+    "consumers": {
+      "heading": "Bricht beim Entfernen",
+      "description": "Diese hängen von diesem Konzept ab und entscheiden diese Änderung nicht. Beim Entfernen bleiben ihre Referenzen kaputt.",
+      "relationship": "Beziehungen in anderen Namespaces",
+      "dataProduct": "Data Products",
+      "dataContract": "Data Contracts"
+    },
+    "overlap": {
+      "heading": "Wird ebenfalls geändert",
+      "description": "Ein anderer offener Change Request bearbeitet dieses Element ebenfalls. Mit der Freigabe wird der andere auf den neuen Stand übertragen, was meist sauber zusammengeführt wird.",
+      "view": "Anderen Change Request ansehen"
+    },
+    "externalNamespace": "Liegt im Namespace {{namespace}}",
+    "unresolved": "Dieses Konzept existiert nicht. Eine Beziehung in diesem Change Request zeigt darauf, deshalb kann er so nicht angewendet werden.",
+    "unresolvedRemovedBy": "Change Request ansehen, der es entfernt hat",
+    "evidence": {
+      "heading": "Belege",
+      "none": "Diese Änderung zitiert nichts. Sie lässt sich gegen keine Quelle prüfen.",
+      "unresolvable": "Nicht erneut prüfbar — kein Repository, Pfad und Commit"
+    }
   },
   "node": {
     "noProperties": "Keine Eigenschaften",
     "group": "Gruppe",
     "expandGroup": "Gruppe aufklappen",
-    "collapseGroup": "Gruppe einklappen"
+    "collapseGroup": "Gruppe einklappen",
+    "propertiesChanged_one": "{{count}} Eigenschaft geändert",
+    "propertiesChanged_other": "{{count}} Eigenschaften geändert"
   }
 }
