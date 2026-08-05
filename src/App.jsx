@@ -696,7 +696,7 @@ function EnlargeButton({ customHeight, containerRef }) {
   );
 }
 
-export default function App({ graphData: sourceGraphData, changes: changesProp, onDecide, customHeight, layout, storageKey, showMiniMap }) {
+export default function App({ graphData: sourceGraphData, changes: changesProp, targetName, onDecide, customHeight, layout, storageKey, showMiniMap }) {
   const { t } = useTranslation();
   const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
   const store = useStoreApi();
@@ -1333,6 +1333,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
       </ReactFlow>
       <ReviewPanel
         changes={changes}
+        targetName={targetName}
         selectedIds={selectedChangeIds}
         onSelectionChange={setSelectedChangeIds}
         onFocus={(cardId) => {

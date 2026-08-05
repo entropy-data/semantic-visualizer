@@ -105,12 +105,14 @@
     "base": "Vorher"
   },
   "review": {
-    "frozenByConflict": "durch einen Konflikt blockiert",
+    "frozenByConflict": "Konflikt muss zuerst gelöst werden",
     "conflict": {
-      "bothChanged": "Seitdem hier und im Ziel geändert",
-      "changedHereRemovedThere": "Hier geändert, im Ziel seitdem entfernt",
-      "removedHereChangedThere": "Hier entfernt, im Ziel seitdem geändert",
-      "bothAdded": "Hier und im Ziel unterschiedlich hinzugefügt"
+      "target": "dem Namespace",
+      "by": "durch",
+      "bothChanged": "Ebenfalls in {{target}} geändert",
+      "changedHereRemovedThere": "In {{target}} entfernt",
+      "removedHereChangedThere": "In {{target}} geändert, nachdem dieses Proposal es entfernt hat",
+      "bothAdded": "Ebenfalls in {{target}} hinzugefügt, mit anderem Inhalt"
     }
   }
 }

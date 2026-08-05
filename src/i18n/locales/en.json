@@ -105,12 +105,14 @@
     "base": "Was"
   },
   "review": {
-    "frozenByConflict": "frozen by a conflict",
+    "frozenByConflict": "conflict must be resolved first",
     "conflict": {
-      "bothChanged": "Changed here and in the target since this was branched",
-      "changedHereRemovedThere": "Changed here, removed from the target since",
-      "removedHereChangedThere": "Removed here, changed in the target since",
-      "bothAdded": "Added here and in the target, differently"
+      "target": "the namespace",
+      "by": "by",
+      "bothChanged": "Also changed in {{target}}",
+      "changedHereRemovedThere": "Removed from {{target}}",
+      "removedHereChangedThere": "Changed in {{target}} after this proposal removed it",
+      "bothAdded": "Also added in {{target}}, with different content"
     }
   }
 }

@@ -76,6 +76,8 @@ document.addEventListener('htmx:load', mountAll);
  * @param {Array}    [options.changes]         review cards; omit for a plain graph
  * @param {Function} [options.onDecide]        `({decision, externalIds}) => Promise<Array>` — resolves
  *                                             to the updated change list
+ * @param {string}   [options.targetName]      what the proposal is measured against, named as the
+ *                                              host names it, so conflict text can say so
  * @param {string}   [options.locale]
  * @param {string}   [options.height]
  */
@@ -101,6 +103,7 @@ export function init(options) {
         <App
           graphData={options.graphData}
           changes={changes}
+          targetName={options.targetName}
           onDecide={options.onDecide}
           customHeight={height}
           layout={options.layout || 'force'}

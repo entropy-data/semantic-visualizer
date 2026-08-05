@@ -41,7 +41,7 @@ const eyebrowStyle = {
   color: '#6b7280',
 };
 
-export default function ReviewPanel({ changes, selectedIds, onSelectionChange, onFocus, onDecide }) {
+export default function ReviewPanel({ changes, targetName, selectedIds, onSelectionChange, onFocus, onDecide }) {
   const { t } = useTranslation();
 
   const decidable = useMemo(
@@ -147,12 +147,12 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
                   marginTop: 4, fontSize: 11, color: '#92400e', background: '#fffbeb',
                   border: '1px solid #fde68a', borderRadius: 4, padding: '2px 6px',
                 }}>
-                  {t('review.conflict.' + change.conflictReason, 'changed here and in the target since')}
-                  {/* Who moved it, where a proposal is what moved it. The reviewer's next question
+                  {t('review.conflict.' + change.conflictReason, { target: targetName || t('review.conflict.target') })}
+                  {/* Who changed it, where a proposal is what changed it. The reviewer's next question
                       after "this conflicts" is "with what", and the answer is a page away. */}
                   {change.conflictSource ? (
                     <>
-                      {' · '}
+                      {' ' + t('review.conflict.by') + ' '}
                       <a href={change.conflictSource.href}
                          onClick={(e) => e.stopPropagation()}
                          style={{ color: '#92400e', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>
