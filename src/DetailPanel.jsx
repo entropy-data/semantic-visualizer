@@ -514,18 +514,16 @@ function EvidenceSection({ evidence, missing }) {
       // drawn like every other one. Only the warning is coloured, because only the warning is one.
       <div style={{ borderBottom: '1px solid #e5e7eb' }}>
         <div style={sectionHeaderStyle}>{t('detail.evidence.heading')}</div>
-        <div style={{ padding: '10px 16px 12px' }}>
-          <div style={{
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
-            borderRadius: 6,
-            padding: '8px 10px',
-            fontSize: 12.5,
-            color: '#78350f',
-            lineHeight: 1.5,
-          }}>
-            {t('detail.evidence.none')}
-          </div>
+        {/* Full width, like every other row in the panel — inset in a card of its own, it read as a
+            floating notice rather than as this section's content. */}
+        <div style={{
+          background: '#fffbeb',
+          padding: '10px 16px',
+          fontSize: 12.5,
+          color: '#78350f',
+          lineHeight: 1.5,
+        }}>
+          {t('detail.evidence.none')}
         </div>
       </div>
     );
