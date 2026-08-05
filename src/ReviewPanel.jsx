@@ -50,29 +50,15 @@ const eyebrowStyle = {
   color: '#6b7280',
 };
 
-export default function ReviewPanel({ changes, targetName, selectedIds, onSelectionChange, onFocus, onDecide }) {
+export default function ReviewPanel({ changes, targetName, selectedIds, onSelectionChange, onFocus }) {
   const { t } = useTranslation();
 
-  // Two different questions, and one set was answering both: how much is left to review, and what
-  // this reviewer may act on. Conflating them meant a decision could never be changed, because a
-  // decided card had left the only set the buttons looked at — while the server has always accepted
-  // a second answer, and under finish-then-merge a decision is provisional until someone finishes.
+  // How much is left to review. What may be acted on is the detail panel's question now, asked of
+  // the change it is showing — the two used to be answered by one set here, which is how a decided
+  // card lost its buttons and a decision became impossible to change.
   const pending = useMemo(
     () => new Set(changes.filter((c) => c.decidable !== false && !c.decision).map((c) => c.externalId)),
     [changes],
-  );
-  const changeable = useMemo(
-    () => new Set(changes.filter((c) => c.decidable !== false).map((c) => c.externalId)),
-    [changes],
-  );
-  const selectedDecidable = useMemo(
-    () => [...selectedIds].filter((id) => changeable.has(id)),
-    [selectedIds, changeable],
-  );
-  // Whether the buttons are about to change an answer rather than give one for the first time.
-  const selectedDecided = useMemo(
-    () => selectedDecidable.filter((id) => changes.find((c) => c.externalId === id)?.decision),
-    [selectedDecidable, changes],
   );
   const accepted = useMemo(() => changes.filter((c) => c.decision === 'accepted').length, [changes]);
   const rejected = useMemo(() => changes.filter((c) => c.decision === 'rejected').length, [changes]);
@@ -280,51 +266,6 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
         })}
       </div>
 
-      {/* No callback means the host cannot write — a read-only view must not offer an action it
-          would silently swallow. */}
-      {onDecide && selectedDecidable.length > 0 ? (
-        <div style={{ borderTop: '1px solid #e5e7eb', padding: '12px 16px', flexShrink: 0 }}>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
-            {/* A box-selection routinely catches cards another team owns; say so before Accept, not after. */}
-            {selectedIds.size === selectedDecidable.length
-              ? t('review.selected', '{{count}} selected', { count: selectedIds.size })
-              : t('review.selectedPartial', '{{total}} selected, {{count}} you can decide', {
-                total: selectedIds.size,
-                count: selectedDecidable.length,
-              })}
-            {/* Said before the click, since pressing Accept on something already rejected is a
-                reversal rather than a decision. */}
-            {selectedDecided.length ? (
-              <span style={{ color: '#b45309' }}>
-                {' · '}
-                {t('review.willChange', '{{count}} already decided', { count: selectedDecided.length })}
-              </span>
-            ) : null}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => onDecide('accepted', selectedDecidable)}
-              style={{
-                flex: 1, border: `1px solid ${DIFF_STYLES.add.color}`, color: DIFF_STYLES.add.color,
-                background: '#fff', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer',
-              }}
-            >
-              {t('review.accept', 'Accept')}
-            </button>
-            <button
-              type="button"
-              onClick={() => onDecide('rejected', selectedDecidable)}
-              style={{
-                flex: 1, border: `1px solid ${DIFF_STYLES.remove.color}`, color: DIFF_STYLES.remove.color,
-                background: '#fff', borderRadius: 6, padding: '5px 10px', fontSize: 12, cursor: 'pointer',
-              }}
-            >
-              {t('review.reject', 'Reject')}
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

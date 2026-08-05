@@ -1327,10 +1327,6 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           setSelectedNode(node || null);
           if (node) setSelectedEdge(null);
         }}
-        // Passed through only when the host actually supplied one. Wrapping it unconditionally made
-        // the panel see a callback that did nothing, so a read-only view still offered buttons and
-        // swallowed the click.
-        onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
       />
       <div ref={canvasRef} style={{ flex: 1, minWidth: 0, position: 'relative' }}>
       <ReactFlow
@@ -1420,6 +1416,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         onToggleCollapse={toggleCollapse}
         onCollapseOthers={collapseOthers}
         onExpandAll={expandAll}
+        // Passed through only when the host actually supplied one. Wrapping it unconditionally made
+        // the panel see a callback that did nothing, so a read-only view still offered buttons and
+        // swallowed the click.
+        onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
         // Closing has to clear the selected card too: leaving it set meant the panel fell straight
         // through to the card's own view, so the close button looked like it had done nothing.
         onClose={() => { setSelectedNode(null); setSelectedEdge(null); setSelectedChangeId(null); }}
