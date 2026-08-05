@@ -474,8 +474,12 @@ function RelationshipChangesSection({ relationships }) {
             }}>
               {t('detail.op.' + relationship.op, relationship.op)}
             </span>
+            {/* "Customer → marketing_consent_at" rather than the id that encodes it. The stored id is
+                machine-made, and reading it is not the reviewer's job. */}
             <span style={{ fontSize: 12.5, color: '#374151', overflowWrap: 'anywhere' }}>
-              {relationship.name || relationship.externalId}
+              {relationship.from && relationship.to
+                ? `${relationship.from} → ${relationship.to}`
+                : relationship.name || relationship.externalId}
             </span>
           </div>
           {relationship.fields?.map((field) => (
