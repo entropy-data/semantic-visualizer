@@ -828,12 +828,28 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         const change = changeByExternalId.get(node.data?.externalId);
         // A property's own change belongs on its row, not on the concept: the concept may not have
         // moved at all, and marking it would say something untrue about it.
-        const properties = (node.data?.properties || []).map((property) => {
+        const listed = (node.data?.properties || []).map((property) => {
           const propertyChange = propertyChangeByExternalId.get(property.externalId);
           return propertyChange
             ? { ...property, diff: propertyChange.op, diffDetail: { fields: propertyChange.fields || [] } }
             : property;
         });
+        // A property the proposal removes is not in the branch, so it is not in the list this
+        // annotates — and the concept losing it said nothing about the loss. Appended from the
+        // change itself, which is the only place it still exists.
+        const seen = new Set(listed.map((p) => p.externalId));
+        const removedProperties = (change?.properties || [])
+          .filter((p) => p.op === 'remove' && !seen.has(p.externalId))
+          .map((p) => ({
+            externalId: p.externalId,
+            name: p.name || p.externalId,
+            description: null,
+            shared: false,
+            inherited: false,
+            diff: 'remove',
+            diffDetail: { fields: p.fields || [] },
+          }));
+        const properties = [...listed, ...removedProperties];
 
         // Only a card of its own marks the node: an inline property resolves to its concept's card,
         // and marking the concept with the property's op would overstate what changed.
