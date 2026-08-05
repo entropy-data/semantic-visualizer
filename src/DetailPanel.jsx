@@ -886,15 +886,17 @@ function TranslationKey({ name }) {
   const field = name.slice(0, at);
   const locale = name.slice(at + 1).toLowerCase();
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+    // The three parts sat shoulder to shoulder at 10.5px, so the flag, the tag and the field name
+    // read as one run of characters rather than as a locale and a field.
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
       <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 3, borderRadius: 4,
-        border: '1px solid #e5e7eb', background: '#fff', padding: '0 5px', fontSize: 10.5, color: '#374151',
+        display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 4,
+        border: '1px solid #e5e7eb', background: '#fff', padding: '2px 7px', fontSize: 11, color: '#374151',
       }}>
         <span>{LOCALE_FLAGS[locale] || '\u{1F310}'}</span>
-        <span style={{ fontWeight: 600, letterSpacing: '0.03em' }}>{locale.toUpperCase()}</span>
+        <span style={{ fontWeight: 600, letterSpacing: '0.04em' }}>{locale.toUpperCase()}</span>
       </span>
-      <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', color: '#6b7280' }}>
+      <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6b7280' }}>
         {field}
       </span>
     </span>
@@ -1003,7 +1005,7 @@ function MapDiff({ before, after }) {
   return (
     <div style={{ marginTop: 3 }}>
       {moved.map((k) => (
-        <div key={k} style={{ marginTop: 4 }}>
+        <div key={k} style={{ marginTop: 8 }}>
           <TranslationKey name={k} />
           {isBlank(b[k])
             ? <Chip value={a[k]} kind="add" />
