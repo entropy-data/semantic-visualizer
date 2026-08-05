@@ -10,15 +10,19 @@ const IMPACT_COLORS = {
   cosmetic: '#64748b',    // slate-500
 };
 
+/**
+ * Half the canvas. A change is read here and merely located out there, so the panel is a working
+ * surface rather than a slot beside the picture — and being a share of the width rather than a
+ * pixel count, it stays that on any screen. Published so the canvas knows what it is covering.
+ */
+export const DETAIL_PANEL_SHARE = 0.5;
+
 const panelStyle = {
   position: 'absolute',
   top: 0,
   right: 0,
   bottom: 0,
-  // Half the canvas. A change is read here and merely located out there, so the panel is a
-  // working surface rather than a slot beside the picture -- and being a share of the width
-  // rather than a pixel count, it stays that on any screen.
-  width: '50%',
+  width: `${DETAIL_PANEL_SHARE * 100}%`,
   background: '#fff',
   borderLeft: '1px solid #e5e7eb',
   boxShadow: '-4px 0 12px rgba(0,0,0,0.08)',

@@ -9,6 +9,7 @@ import {
   Panel,
   MarkerType,
   useReactFlow,
+  useStoreApi,
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
@@ -17,8 +18,8 @@ import KnowledgeNode from './KnowledgeNode';
 import EntityNode from './EntityNode';
 import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
-import DetailPanel from './DetailPanel';
-import ReviewPanel from './ReviewPanel';
+import DetailPanel, { DETAIL_PANEL_SHARE } from './DetailPanel';
+import ReviewPanel, { CHANGE_LIST_WIDTH } from './ReviewPanel';
 import { GroupActionsContext } from './GroupActionsContext';
 import { zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon } from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
@@ -697,7 +698,8 @@ function EnlargeButton({ customHeight, containerRef }) {
 
 export default function App({ graphData: sourceGraphData, changes: changesProp, onDecide, customHeight, layout, storageKey, showMiniMap }) {
   const { t } = useTranslation();
-  const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
+  const store = useStoreApi();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   // Review selection is shared between the change list and the graph: one set, two views onto it.
@@ -1140,6 +1142,46 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     setEdges(displayEdges);
   }
 
+  /**
+   * Bring a selected element into the part of the canvas still in view.
+   *
+   * The detail panel covers half the canvas and the change list the left edge, so clicking a node
+   * on the right made it vanish behind the panel it just opened — the reviewer selected something
+   * and lost sight of it. Only pans when the element is actually covered: moving the ground under
+   * someone who could already see what they picked is its own kind of wrong.
+   */
+  const revealNode = useCallback((node) => {
+    const container = containerRef.current;
+    if (!node || !container) return;
+    // With the lookup so a node inside a group is measured where it actually sits, not relative to
+    // its parent.
+    const bounds = getNodesBounds([node], { nodeLookup: store.getState().nodeLookup });
+    if (!bounds || !bounds.width) return;
+
+    const { x: viewX, y: viewY, zoom } = getViewport();
+    const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect();
+    const left = bounds.x * zoom + viewX;
+    const right = (bounds.x + bounds.width) * zoom + viewX;
+    const top = bounds.y * zoom + viewY;
+    const bottom = (bounds.y + bounds.height) * zoom + viewY;
+
+    const visibleLeft = changes.length ? CHANGE_LIST_WIDTH : 0;
+    const visibleRight = containerWidth * (1 - DETAIL_PANEL_SHARE);
+    const margin = 32;
+    const covered = left < visibleLeft + margin || right > visibleRight - margin
+      || top < margin || bottom > containerHeight - margin;
+    if (!covered) return;
+
+    // setCenter aims at the middle of the whole canvas, half of which is behind the panel. Offset
+    // the target by the gap between that middle and the middle of what is actually visible.
+    const visibleCentre = (visibleLeft + visibleRight) / 2;
+    setCenter(
+      bounds.x + bounds.width / 2 + (containerWidth / 2 - visibleCentre) / zoom,
+      bounds.y + bounds.height / 2,
+      { zoom, duration: 400 },
+    );
+  }, [changes.length, getNodesBounds, getViewport, setCenter, store]);
+
   const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
     const deselecting = selectedNode?.id === node.id;
@@ -1148,6 +1190,8 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     // The other half of one shared selection: picking a node in the graph picks its card, exactly as
     // picking a card focuses its node. Without this the graph is somewhere to look rather than
     // somewhere to work, and a reviewer has to find the same element twice.
+    if (!deselecting) revealNode(node);
+
     const cardId = cardIdOf(node);
     if (cardId === undefined) return;
     setSelectedChangeId(deselecting ? null : cardId);
@@ -1158,7 +1202,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
       else if (!(deselecting && !additive)) next.add(cardId);
       return next;
     });
-  }, [selectedNode, cardIdOf]);
+  }, [selectedNode, cardIdOf, revealNode]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
   // is the only place a reviewer can see what a change request did to one.
@@ -1296,7 +1340,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           const node = getNodes().find((n) => cardIdOf(n) === cardId);
           // A card with no node still has something to show, so the panel is told either way.
           setSelectedNode(node || null);
-          if (node) setSelectedEdge(null);
+          if (node) {
+            setSelectedEdge(null);
+            revealNode(node);
+          }
         }}
         // Passed through only when the host actually supplied one. Wrapping it unconditionally made
         // the panel see a callback that did nothing, so a read-only view still offered buttons and

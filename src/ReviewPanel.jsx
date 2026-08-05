@@ -15,12 +15,15 @@ import { DIFF_STYLES } from './diffStyles';
  * instrument, since it is where six changes can be seen to be one coherent subgraph.
  */
 
+/** Published so the canvas can work out which strip of itself is still visible. */
+export const CHANGE_LIST_WIDTH = 300;
+
 const panelStyle = {
   position: 'absolute',
   top: 0,
   left: 0,
   bottom: 0,
-  width: 300,
+  width: CHANGE_LIST_WIDTH,
   background: '#fff',
   borderRight: '1px solid #e5e7eb',
   boxShadow: '4px 0 12px rgba(0,0,0,0.08)',
