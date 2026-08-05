@@ -128,6 +128,15 @@
       "accepted": "{{count}} angenommen",
       "rejected": "{{count}} abgelehnt"
     },
-    "willChange": "{{count}} bereits entschieden"
+    "willChange": "{{count}} bereits entschieden",
+    "properties_one": "Property",
+    "properties_other": "Properties",
+    "relationships_one": "Beziehung",
+    "relationships_other": "Beziehungen",
+    "impact": {
+      "structural": "Strukturell",
+      "descriptive": "Beschreibend",
+      "cosmetic": "Kosmetisch"
+    }
   }
 }

@@ -25,6 +25,40 @@ const DECISION_TONE = {
   rejected: { text: '#b91c1c', badge: '#fee2e2', tint: '#fffafa' },
 };
 
+/** Shared with the detail panel, so one change is not two colours in two places. */
+const IMPACT_COLORS = {
+  structural: '#dc2626',
+  descriptive: '#d97706',
+  cosmetic: '#64748b',
+};
+
+/**
+ * What this change did, in the space of one line.
+ *
+ * Named fields first — they are what a reviewer recognises — then signed counts for what hangs off
+ * the concept, because a sign reads faster than a noun.
+ */
+function describeChange(change, t) {
+  const parts = [];
+  const fields = (change.fields || []).map((f) => f.field);
+  if (fields.length) {
+    parts.push(fields.length > 2 ? `${fields.slice(0, 2).join(', ')} +${fields.length - 2}` : fields.join(', '));
+  }
+  const signed = (items, key) => {
+    const added = items.filter((i) => i.op === 'add').length;
+    const removed = items.filter((i) => i.op === 'remove').length;
+    const changed = items.length - added - removed;
+    return [
+      added ? `+${added}` : null,
+      removed ? `−${removed}` : null,
+      changed ? `~${changed}` : null,
+    ].filter(Boolean).join(' ') + ' ' + t(key, { count: items.length });
+  };
+  if (change.properties?.length) parts.push(signed(change.properties, 'review.properties'));
+  if (change.relationships?.length) parts.push(signed(change.relationships, 'review.relationships'));
+  return parts.join(' · ');
+}
+
 const panelStyle = {
   width: CHANGE_LIST_WIDTH,
   flexShrink: 0,
@@ -112,6 +146,7 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
           const isSelected = selectedIds.has(change.externalId);
           const isDecided = Boolean(change.decision);
           const unresolvable = change.evidence?.some((e) => e.resolvable === false);
+          const summary = describeChange(change, t);
           return (
             <div
               key={change.externalId || '__namespace__'}
@@ -155,7 +190,18 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                 <span style={{ fontWeight: 600, color: '#111827', flex: 1, minWidth: 0, wordBreak: 'break-word' }}>
                   {change.name || change.externalId}
                 </span>
-                <span style={{ ...eyebrowStyle, fontSize: 10 }}>{change.elementType}</span>
+                {change.impact ? (
+                  <span style={{
+                    flexShrink: 0,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    color: IMPACT_COLORS[change.impact] || IMPACT_COLORS.cosmetic,
+                  }}>
+                    {t(`review.impact.${change.impact}`, change.impact)}
+                  </span>
+                ) : null}
               </div>
 
               {/* Why a card will not respond, said on the card. Excluding it from the count is not an
@@ -199,17 +245,11 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                 </div>
               ) : null}
 
-              {/* What is folded into this entry rather than listed beside it. */}
-              {(change.properties?.length || change.relationships?.length) ? (
-                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>
-                  {change.properties?.length
-                    ? t('review.properties', '{{count}} properties', { count: change.properties.length })
-                    : null}
-                  {change.properties?.length && change.relationships?.length ? ' · ' : null}
-                  {change.relationships?.length
-                    ? t('review.relationships', '{{count}} relationships', { count: change.relationships.length })
-                    : null}
-                </div>
+              {/* What moved, rather than how much of it. Counting sub-changes said nothing about the
+                  concept's own fields, so a card that rewrote a description and reassigned an owner
+                  reported only the property hanging off it. */}
+              {summary ? (
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{summary}</div>
               ) : null}
 
               {/* Who says so. For an agent's proposal this is the only answer a reviewer has, and an
