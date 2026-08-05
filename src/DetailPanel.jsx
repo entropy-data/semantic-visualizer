@@ -10,83 +10,15 @@ const IMPACT_COLORS = {
   cosmetic: '#64748b',    // slate-500
 };
 
-// --- Panel width -------------------------------------------------------------------------------
-//
-// The detail panel carries the most and was given the least: a fixed 320px column, while the graph
-// beside it sat mostly empty. It is now dragged to whatever the change in front of the reviewer
-// needs, and remembers it. The width rides on a CSS variable so all three panel bodies pick it up
-// without any of them owning the state.
-
-const PANEL_WIDTH_KEY = 'semantic-visualizer.detailPanelWidth';
-const MIN_PANEL_WIDTH = 300;
-const MAX_PANEL_WIDTH = 900;
-// Below this a before-and-after pair reads better stacked than in two columns too narrow for either.
-const SIDE_BY_SIDE_WIDTH = 470;
-
-function initialPanelWidth() {
-  const stored = Number(globalThis.localStorage?.getItem(PANEL_WIDTH_KEY));
-  if (Number.isFinite(stored) && stored > 0) {
-    return Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, stored));
-  }
-  return Math.min(520, Math.max(MIN_PANEL_WIDTH, Math.round((globalThis.innerWidth || 1400) * 0.32)));
-}
-
-const widthStore = {
-  value: initialPanelWidth(),
-  listeners: new Set(),
-  set(value) {
-    this.value = value;
-    globalThis.document?.documentElement.style.setProperty('--sv-detail-width', `${value}px`);
-    this.listeners.forEach((listener) => listener());
-  },
-  subscribe(listener) {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  },
-};
-widthStore.set(widthStore.value);
-
-const usePanelWidth = () => React.useSyncExternalStore(
-  (listener) => widthStore.subscribe(listener),
-  () => widthStore.value,
-  () => widthStore.value,
-);
-
-/** The grab edge. Sized for a cursor rather than for pixel-accuracy, and it does not scroll away. */
-function PanelResizeHandle() {
-  const onMouseDown = (event) => {
-    event.preventDefault();
-    const panel = event.currentTarget.parentElement;
-    const right = panel.getBoundingClientRect().right;
-    // Never so wide that the canvas it is reviewing disappears behind it.
-    const max = Math.min(MAX_PANEL_WIDTH, (panel.parentElement?.clientWidth || MAX_PANEL_WIDTH) - 160);
-    const move = (e) => widthStore.set(Math.min(max, Math.max(MIN_PANEL_WIDTH, right - e.clientX)));
-    const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-      document.body.style.cursor = '';
-      try {
-        window.localStorage.setItem(PANEL_WIDTH_KEY, String(widthStore.value));
-      } catch {
-        // Private browsing refuses storage; the width still holds for this session.
-      }
-    };
-    document.body.style.cursor = 'col-resize';
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  };
-  return (
-    <div onMouseDown={onMouseDown}
-         style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 9, cursor: 'col-resize', zIndex: 20 }} />
-  );
-}
-
 const panelStyle = {
   position: 'absolute',
   top: 0,
   right: 0,
   bottom: 0,
-  width: 'var(--sv-detail-width, 320px)',
+  // Half the canvas. A change is read here and merely located out there, so the panel is a
+  // working surface rather than a slot beside the picture -- and being a share of the width
+  // rather than a pixel count, it stays that on any screen.
+  width: '50%',
   background: '#fff',
   borderLeft: '1px solid #e5e7eb',
   boxShadow: '-4px 0 12px rgba(0,0,0,0.08)',
@@ -220,7 +152,6 @@ export default function DetailPanel({
 
   return (
     <div style={panelStyle}>
-      <PanelResizeHandle />
       {/* Accent bar */}
       <div style={{ height: 4, background: accentColor, flexShrink: 0 }} />
 
@@ -383,7 +314,6 @@ function EdgePanel({ edge, graphData, onClose }) {
 
   return (
     <div style={panelStyle}>
-      <PanelResizeHandle />
       <div style={{ height: 4, background: accentColor, flexShrink: 0 }} />
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -447,7 +377,6 @@ function ChangePanel({ change, onClose }) {
   const diff = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
   return (
     <div style={panelStyle}>
-      <PanelResizeHandle />
       <div style={{ height: 4, background: diff.color, flexShrink: 0 }} />
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -999,19 +928,16 @@ function MapDiff({ before, after }) {
 /** The original treatment, kept for what it suits: sentences. */
 function ProseDiff({ before, after }) {
   const { t } = useTranslation();
-  const width = usePanelWidth();
-  if (width < SIDE_BY_SIDE_WIDTH) {
-    return (
-      <>
-        <ValueRow label={t('detail.diff.before')} value={before} color="#dc2626" strike />
-        <ValueRow label={t('detail.diff.after')} value={after} color="#16a34a" />
-      </>
-    );
-  }
   // Two sentences one above the other, each wrapped to four lines, are compared by memory. Side by
-  // side at the same width, the words that moved are the ones that do not line up.
+  // side at the same width, the words that moved are the ones that do not line up. `auto-fit` drops
+  // back to one column where two would be too narrow to read, without anything measuring anything.
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 3 }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      gap: 10,
+      marginTop: 3,
+    }}>
       <ProseColumn label={t('detail.diff.before')} value={before} color="#dc2626" strike />
       <ProseColumn label={t('detail.diff.after')} value={after} color="#16a34a" />
     </div>
@@ -1050,38 +976,6 @@ function FieldDiff({ field, before, after }) {
   if (ENUM_FIELDS.has(field)) return <ChipTransition before={before} after={after} />;
   if (CODE_FIELDS.has(field)) return <ChipTransition before={before} after={after} mono />;
   return <ProseDiff before={before} after={after} />;
-}
-
-function ValueRow({ label, value, color, strike }) {
-  const { t } = useTranslation();
-  const isUnset = value === null || value === undefined || value === '';
-
-  return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginTop: 2 }}>
-      <span style={{
-        flexShrink: 0,
-        width: 62,
-        fontSize: 10.5,
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '0.03em',
-        color,
-      }}>
-        {label}
-      </span>
-      <span style={{
-        fontSize: 12.5,
-        lineHeight: 1.45,
-        color: isUnset ? '#9ca3af' : '#111827',
-        fontStyle: isUnset ? 'italic' : 'normal',
-        textDecoration: strike && !isUnset ? 'line-through' : 'none',
-        textDecorationColor: '#fca5a5',
-        wordBreak: 'break-word',
-      }}>
-        {isUnset ? t('detail.diff.unset') : value}
-      </span>
-    </div>
-  );
 }
 
 function EntityBody({ node, changesOnly }) {
