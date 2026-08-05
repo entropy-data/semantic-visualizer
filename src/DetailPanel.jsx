@@ -881,14 +881,18 @@ const LOCALE_FLAGS = {
 function TranslationKey({ name }) {
   const at = name.lastIndexOf('@');
   if (at < 0) {
-    return <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 10.5, color: '#6b7280' }}>{name}</span>;
+    return (
+      <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11, color: '#6b7280', marginRight: 12 }}>
+        {name}
+      </span>
+    );
   }
   const field = name.slice(0, at);
   const locale = name.slice(at + 1).toLowerCase();
   return (
-    // The three parts sat shoulder to shoulder at 10.5px, so the flag, the tag and the field name
-    // read as one run of characters rather than as a locale and a field.
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+    // Room between the parts, not a line break: the flag, the tag and the field name ran together at
+    // 10.5px with three pixels between them, which is a spacing problem rather than a width one.
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 5, borderRadius: 4,
         border: '1px solid #e5e7eb', background: '#fff', padding: '2px 7px', fontSize: 11, color: '#374151',
@@ -1005,7 +1009,7 @@ function MapDiff({ before, after }) {
   return (
     <div style={{ marginTop: 3 }}>
       {moved.map((k) => (
-        <div key={k} style={{ marginTop: 8 }}>
+        <div key={k} style={{ marginTop: 10 }}>
           <TranslationKey name={k} />
           {isBlank(b[k])
             ? <Chip value={a[k]} kind="add" />

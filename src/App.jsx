@@ -718,6 +718,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
   const store = useStoreApi();
   const containerRef = useRef(null);
+  const canvasRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   // Review selection is shared between the change list and the graph: one set, two views onto it.
   // Any graph element resolves to the card that governs it, so selecting a property node selects the
@@ -1181,6 +1182,21 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     });
   }, [getNodesBounds, getViewport, setCenter, store]);
 
+  /**
+   * Centre again once the canvas has settled at its new size.
+   *
+   * Selecting the first change opens the detail panel, which takes half the width. React Flow keeps
+   * its own dimensions and updates them from its own observer, so centring at click time computes
+   * against a width the canvas is about to stop having — and the node lands off to one side on
+   * exactly the click meant to bring it into view. Every later click is already at the new size,
+   * which is why only the first one looked wrong.
+   */
+  useEffect(() => {
+    if (!selectedNode) return undefined;
+    const timer = setTimeout(() => focusNode(selectedNode), 250);
+    return () => clearTimeout(timer);
+  }, [selectedNode, focusNode]);
+
   const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
     const deselecting = selectedNode?.id === node.id;
@@ -1301,7 +1317,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         // swallowed the click.
         onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
       />
-      <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+      <div ref={canvasRef} style={{ flex: 1, minWidth: 0, position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
