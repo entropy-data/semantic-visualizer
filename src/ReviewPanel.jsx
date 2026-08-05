@@ -148,6 +148,18 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
                   border: '1px solid #fde68a', borderRadius: 4, padding: '2px 6px',
                 }}>
                   {t('review.conflict.' + change.conflictReason, 'changed here and in the target since')}
+                  {/* Who moved it, where a proposal is what moved it. The reviewer's next question
+                      after "this conflicts" is "with what", and the answer is a page away. */}
+                  {change.conflictSource ? (
+                    <>
+                      {' · '}
+                      <a href={change.conflictSource.href}
+                         onClick={(e) => e.stopPropagation()}
+                         style={{ color: '#92400e', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                        {change.conflictSource.label}
+                      </a>
+                    </>
+                  ) : null}
                 </div>
               ) : null}
 
