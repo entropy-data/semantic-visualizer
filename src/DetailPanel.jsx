@@ -336,7 +336,11 @@ export default function DetailPanel({
       ) : (
         <div style={scrollerStyle(stacked)}>
           <DiffSection detail={node.data.diffDetail} />
-          <RelationshipChangesSection relationships={change?.relationships} />
+          {/* The card's, not the node's: selecting a shared property resolves to the concept that
+              governs it, so an unguarded render put Customer's relationship changes under Customer
+              Email's name. Shown only where the two are the same element. */}
+          <RelationshipChangesSection
+            relationships={change?.externalId === node.data?.externalId ? change.relationships : null} />
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
           <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
