@@ -510,12 +510,22 @@ function EvidenceSection({ evidence, missing }) {
 
   if (items.length === 0) {
     return (
-      <div style={{ borderBottom: '1px solid #e5e7eb', background: '#fffbeb' }}>
-        <div style={{ ...sectionHeaderStyle, background: 'transparent', borderBottom: 'none', color: '#92400e' }}>
-          {t('detail.evidence.heading')}
-        </div>
-        <div style={{ padding: '0 16px 12px', fontSize: 12.5, color: '#78350f', lineHeight: 1.5 }}>
-          {t('detail.evidence.none')}
+      // The heading names the section whether or not there is anything to worry about, so it is
+      // drawn like every other one. Only the warning is coloured, because only the warning is one.
+      <div style={{ borderBottom: '1px solid #e5e7eb' }}>
+        <div style={sectionHeaderStyle}>{t('detail.evidence.heading')}</div>
+        <div style={{ padding: '10px 16px 12px' }}>
+          <div style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 6,
+            padding: '8px 10px',
+            fontSize: 12.5,
+            color: '#78350f',
+            lineHeight: 1.5,
+          }}>
+            {t('detail.evidence.none')}
+          </div>
         </div>
       </div>
     );
