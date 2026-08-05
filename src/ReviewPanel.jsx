@@ -46,13 +46,26 @@ const eyebrowStyle = {
 export default function ReviewPanel({ changes, targetName, selectedIds, onSelectionChange, onFocus, onDecide }) {
   const { t } = useTranslation();
 
-  const decidable = useMemo(
+  // Two different questions, and one set was answering both: how much is left to review, and what
+  // this reviewer may act on. Conflating them meant a decision could never be changed, because a
+  // decided card had left the only set the buttons looked at — while the server has always accepted
+  // a second answer, and under finish-then-merge a decision is provisional until someone finishes.
+  const pending = useMemo(
     () => new Set(changes.filter((c) => c.decidable !== false && !c.decision).map((c) => c.externalId)),
     [changes],
   );
+  const changeable = useMemo(
+    () => new Set(changes.filter((c) => c.decidable !== false).map((c) => c.externalId)),
+    [changes],
+  );
   const selectedDecidable = useMemo(
-    () => [...selectedIds].filter((id) => decidable.has(id)),
-    [selectedIds, decidable],
+    () => [...selectedIds].filter((id) => changeable.has(id)),
+    [selectedIds, changeable],
+  );
+  // Whether the buttons are about to change an answer rather than give one for the first time.
+  const selectedDecided = useMemo(
+    () => selectedDecidable.filter((id) => changes.find((c) => c.externalId === id)?.decision),
+    [selectedDecidable, changes],
   );
   const accepted = useMemo(() => changes.filter((c) => c.decision === 'accepted').length, [changes]);
   const rejected = useMemo(() => changes.filter((c) => c.decision === 'rejected').length, [changes]);
@@ -73,7 +86,7 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
         <div style={eyebrowStyle}>{t('review.eyebrow', 'Proposal')}</div>
         <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 2 }}>
-          {t('review.pending', '{{count}} to review', { count: decidable.size })}
+          {t('review.pending', '{{count}} to review', { count: pending.size })}
         </div>
         {/* What has already been settled, so the state of the whole proposal is legible without
             reading every card — the same question the list view answers with "waiting on". */}
@@ -263,6 +276,14 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                 total: selectedIds.size,
                 count: selectedDecidable.length,
               })}
+            {/* Said before the click, since pressing Accept on something already rejected is a
+                reversal rather than a decision. */}
+            {selectedDecided.length ? (
+              <span style={{ color: '#b45309' }}>
+                {' · '}
+                {t('review.willChange', '{{count}} already decided', { count: selectedDecided.length })}
+              </span>
+            ) : null}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button

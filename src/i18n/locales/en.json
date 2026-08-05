@@ -127,6 +127,7 @@
     "summary": {
       "accepted": "{{count}} accepted",
       "rejected": "{{count}} rejected"
-    }
+    },
+    "willChange": "{{count}} already decided"
   }
 }
