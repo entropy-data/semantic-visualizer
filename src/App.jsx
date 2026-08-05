@@ -9,6 +9,7 @@ import {
   Panel,
   MarkerType,
   useReactFlow,
+  useStore,
   useStoreApi,
   useNodesState,
   useEdgesState,
@@ -719,6 +720,8 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   const store = useStoreApi();
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
+  // React Flow's own measurement, so centring is driven by the number it uses rather than a copy.
+  const flowWidth = useStore((state) => state.width);
   const [selectedNode, setSelectedNode] = useState(null);
   // Review selection is shared between the change list and the graph: one set, two views onto it.
   // Any graph element resolves to the card that governs it, so selecting a property node selects the
@@ -1225,27 +1228,25 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   }, [getNodesBounds, getViewport, setCenter, store]);
 
   /**
-   * Centre again once the canvas has settled at its new size.
+   * Centre on the selection, once, when React Flow knows how wide it is.
    *
-   * Selecting the first change opens the detail panel, which takes half the width. React Flow keeps
-   * its own dimensions and updates them from its own observer, so centring at click time computes
-   * against a width the canvas is about to stop having — and the node lands off to one side on
-   * exactly the click meant to bring it into view. Every later click is already at the new size,
-   * which is why only the first one looked wrong.
+   * Centring at click time computes against the canvas as it was: selecting the first change opens
+   * the detail panel and takes half the width, and React Flow measures itself asynchronously. The
+   * first attempt at this centred immediately and corrected afterwards, which is two pans for every
+   * click — a fast move and then a small step.
+   *
+   * Depending on React Flow's own width instead means the centring happens when the value it is
+   * computed from actually changes: once per selection, and once more only when the canvas really
+   * did resize under it.
    */
   useEffect(() => {
-    if (!selectedNode) return undefined;
-    const timer = setTimeout(() => focusNode(selectedNode), 250);
-    return () => clearTimeout(timer);
-  }, [selectedNode, focusNode]);
+    if (selectedNode) focusNode(selectedNode);
+  }, [selectedNode, flowWidth, focusNode]);
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
     const deselecting = selectedNode?.id === node.id;
     setSelectedNode(deselecting ? null : node);
-    // Opening the panel takes half the width away, so a node clicked on the right of the canvas ends
-    // up outside it. Centring keeps what was just picked in the part that remains.
-    if (!deselecting) focusNode(node);
 
     // The other half of one shared selection: picking a node in the graph picks its card, exactly as
     // picking a card focuses its node. Without this the graph is somewhere to look rather than
@@ -1260,7 +1261,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
       else if (!(deselecting && !additive)) next.add(cardId);
       return next;
     });
-  }, [selectedNode, cardIdOf, focusNode]);
+  }, [selectedNode, cardIdOf]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
   // is the only place a reviewer can see what a change request did to one.
@@ -1349,10 +1350,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           const node = getNodes().find((n) => cardIdOf(n) === cardId);
           // A card with no node still has something to show, so the panel is told either way.
           setSelectedNode(node || null);
-          if (node) {
-            setSelectedEdge(null);
-            focusNode(node);
-          }
+          if (node) setSelectedEdge(null);
         }}
         // Passed through only when the host actually supplied one. Wrapping it unconditionally made
         // the panel see a callback that did nothing, so a read-only view still offered buttons and
