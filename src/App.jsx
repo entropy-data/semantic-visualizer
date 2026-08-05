@@ -1217,6 +1217,59 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   }, []);
 
 
+  // The detail panel covers half the canvas and the change list the rest of its left edge, so a
+  // toolbar pinned to the canvas corner became unreachable the moment a reviewer selected anything.
+  // In a review it belongs with the list, which is never covered; a standalone graph has the corner
+  // free and keeps it there.
+  const isReview = changes.length > 0;
+  const viewControls = (
+<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {hasDiff && (
+          <button
+            onClick={() => {
+              setChangesOnly((v) => !v);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+            }}
+            style={toggleBtnStyle(changesOnly)}
+            onMouseOver={(e) => { if (!changesOnly) e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { if (!changesOnly) e.currentTarget.style.background = '#fff'; }}
+            title={t('toolbar.changesOnly.title')}
+          >
+            {t('toolbar.changesOnly.label')}
+          </button>
+        )}
+        {!isHierarchy && hasGroups && (
+          <button
+            onClick={() => {
+              setShowGroups((v) => !v);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+            }}
+            style={toggleBtnStyle(showGroups)}
+            onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
+            title={t('toolbar.showGroups.title')}
+          >
+            {t('toolbar.showGroups.label')}
+          </button>
+        )}
+        {!isHierarchy && (
+          <button
+            onClick={() => {
+              setShowProperties((v) => !v);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+            }}
+            style={toggleBtnStyle(showProperties)}
+            onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
+            title={t('toolbar.erd.title')}
+          >
+            {t('toolbar.erd.label')}
+          </button>
+        )}
+        <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
+      </div>
+  );
+
   return (
     <GroupActionsContext.Provider value={groupActions}>
     <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -1283,57 +1336,12 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           </ControlButton>
         </Controls>
         {showMiniMap && <MiniMap zoomable pannable />}
-        <Panel position="top-right">
-          <div style={{ display: 'flex', gap: 6 }}>
-            {hasDiff && (
-              <button
-                onClick={() => {
-                  setChangesOnly((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
-                }}
-                style={toggleBtnStyle(changesOnly)}
-                onMouseOver={(e) => { if (!changesOnly) e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseOut={(e) => { if (!changesOnly) e.currentTarget.style.background = '#fff'; }}
-                title={t('toolbar.changesOnly.title')}
-              >
-                {t('toolbar.changesOnly.label')}
-              </button>
-            )}
-            {!isHierarchy && hasGroups && (
-              <button
-                onClick={() => {
-                  setShowGroups((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
-                }}
-                style={toggleBtnStyle(showGroups)}
-                onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
-                title={t('toolbar.showGroups.title')}
-              >
-                {t('toolbar.showGroups.label')}
-              </button>
-            )}
-            {!isHierarchy && (
-              <button
-                onClick={() => {
-                  setShowProperties((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
-                }}
-                style={toggleBtnStyle(showProperties)}
-                onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
-                title={t('toolbar.erd.title')}
-              >
-                {t('toolbar.erd.label')}
-              </button>
-            )}
-            <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
-          </div>
-        </Panel>
+        {!isReview && <Panel position="top-right">{viewControls}</Panel>}
       </ReactFlow>
       <ReviewPanel
         changes={changes}
         targetName={targetName}
+        controls={viewControls}
         selectedIds={selectedChangeIds}
         onSelectionChange={setSelectedChangeIds}
         onFocus={(cardId) => {

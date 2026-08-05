@@ -91,7 +91,13 @@
       "none": "This change cites nothing. It cannot be checked against a source.",
       "unresolvable": "Cannot be checked again — no repository, path and commit"
     },
-    "propertiesChanged": ", {{count}} changed"
+    "propertiesChanged": ", {{count}} changed",
+    "relationshipChanges": "Relationships",
+    "op": {
+      "add": "adds",
+      "remove": "removes",
+      "modify": "changes"
+    }
   },
   "node": {
     "noProperties": "No properties",

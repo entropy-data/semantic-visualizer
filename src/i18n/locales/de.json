@@ -91,7 +91,13 @@
       "none": "Diese Änderung zitiert nichts. Sie lässt sich gegen keine Quelle prüfen.",
       "unresolvable": "Nicht erneut prüfbar — kein Repository, Pfad und Commit"
     },
-    "propertiesChanged": ", {{count}} geändert"
+    "propertiesChanged": ", {{count}} geändert",
+    "relationshipChanges": "Beziehungen",
+    "op": {
+      "add": "fügt hinzu",
+      "remove": "entfernt",
+      "modify": "ändert"
+    }
   },
   "node": {
     "noProperties": "Keine Eigenschaften",

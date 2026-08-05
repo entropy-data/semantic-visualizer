@@ -340,6 +340,7 @@ export default function DetailPanel({
       ) : (
         <div style={scrollerStyle(stacked)}>
           <DiffSection detail={node.data.diffDetail} />
+          <RelationshipChangesSection relationships={change?.relationships} />
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
           <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
@@ -446,6 +447,52 @@ function ChangePanel({ change, onClose, stacked }) {
         <DiffSection detail={{ op: change.op, impact: change.impact?.toLowerCase(), fields: change.fields || [] }} />
         <EvidenceSection evidence={change.evidence} missing={!change.evidence || change.evidence.length === 0} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * What the proposal does to this concept's relationships.
+ *
+ * A relationship is a change in its own right and can be the only one a card carries — connecting an
+ * existing property to a concept adds no field to either. Nothing rendered them, so such a card read
+ * as "Approving this request applies the following" followed by nothing at all.
+ */
+function RelationshipChangesSection({ relationships }) {
+  const { t } = useTranslation();
+  if (!relationships || relationships.length === 0) return null;
+  const tone = { add: '#15803d', remove: '#b91c1c', modify: '#b45309' };
+  return (
+    <div>
+      <div style={sectionHeaderStyle}>
+        {t('detail.relationshipChanges', 'Relationships')} ({relationships.length})
+      </div>
+      {relationships.map((relationship) => (
+        <div key={relationship.externalId} style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+              color: tone[relationship.op] || '#6b7280', flexShrink: 0,
+            }}>
+              {t('detail.op.' + relationship.op, relationship.op)}
+            </span>
+            <span style={{ fontSize: 12.5, color: '#374151', overflowWrap: 'anywhere' }}>
+              {relationship.name || relationship.externalId}
+            </span>
+          </div>
+          {relationship.fields?.map((field) => (
+            <div key={field.field} style={{ marginTop: 4 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                letterSpacing: '0.04em', color: '#6b7280',
+              }}>
+                {field.field}
+              </div>
+              <FieldDiff field={field.field} before={field.before} after={field.after} base={field.base} />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
