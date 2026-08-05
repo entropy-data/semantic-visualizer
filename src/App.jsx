@@ -1351,6 +1351,17 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
       />
       <DetailPanel
+        // In the list's order, not click order: the panel is a second view onto the same selection,
+        // and two views disagreeing about sequence is worse than either order alone.
+        selection={selectedChangeIds.size > 1
+          ? changes
+            .filter((c) => selectedChangeIds.has(c.externalId))
+            .map((c) => ({
+              key: c.externalId,
+              change: c,
+              node: getNodes().find((n) => cardIdOf(n) === c.externalId) || null,
+            }))
+          : undefined}
         node={selectedNode}
         change={changes.find((c) => c.externalId === selectedChangeId) || null}
         changesOnly={changesOnly}

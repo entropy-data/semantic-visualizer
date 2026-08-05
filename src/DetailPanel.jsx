@@ -32,6 +32,22 @@ const panelStyle = {
   overflow: 'hidden',
 };
 
+/**
+ * One entry when several are selected. The panel itself scrolls, so a stacked body flows rather than
+ * claiming the height, and a rule separates it from the next.
+ */
+/** A body inside the stack flows to its full height; the panel around it is what scrolls. */
+const scrollerStyle = (stacked, extra = {}) => (stacked
+  ? { display: 'flex', flexDirection: 'column', ...extra }
+  : { flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', ...extra });
+
+const stackedBodyStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  flexShrink: 0,
+  borderBottom: '1px solid #e5e7eb',
+};
+
 const closeButtonStyle = {
   background: 'none',
   border: 'none',
@@ -138,12 +154,40 @@ export default function DetailPanel({
   onExpandAll,
   onSelectEdge,
   onClose,
+  selection,
+  stacked,
 }) {
   const { t } = useTranslation();
-  if (edge) return <EdgePanel edge={edge} graphData={graphData} onClose={onClose} />;
+  // Selecting three cards and being shown one is the panel disagreeing with the list about what is
+  // selected. Stacked in the list's order, so the reader's eye lands where they last clicked.
+  if (!stacked && selection && selection.length > 1) {
+    return (
+      <div style={{ ...panelStyle, overflow: 'auto' }}>
+        {selection.map((item, index) => (
+          <DetailPanel
+            key={item.key}
+            node={item.node}
+            change={item.change}
+            changesOnly={changesOnly}
+            graphData={graphData}
+            isCollapsed={isCollapsed}
+            onToggleCollapse={onToggleCollapse}
+            onCollapseOthers={onCollapseOthers}
+            onExpandAll={onExpandAll}
+            onSelectEdge={onSelectEdge}
+            // One control clearing one selection: an X per entry would read as "remove this one",
+            // which is not what it does.
+            onClose={index === 0 ? onClose : undefined}
+            stacked
+          />
+        ))}
+      </div>
+    );
+  }
+  if (edge) return <EdgePanel edge={edge} graphData={graphData} onClose={onClose} stacked={stacked} />;
   // A change with no node behind it — the namespace's own, which is a card without a place on the
   // canvas. Selecting it showed an empty panel, which read as the click having failed.
-  if (!node && change) return <ChangePanel change={change} onClose={onClose} />;
+  if (!node && change) return <ChangePanel change={change} onClose={onClose} stacked={stacked} />;
   if (!node) return null;
 
   const type = node.type || 'entity';
@@ -155,7 +199,7 @@ export default function DetailPanel({
   const isGroup = GROUP_TYPES.has(type);
 
   return (
-    <div style={panelStyle}>
+    <div style={stacked ? stackedBodyStyle : panelStyle}>
       {/* Accent bar */}
       <div style={{ height: 4, background: accentColor, flexShrink: 0 }} />
 
@@ -204,7 +248,7 @@ export default function DetailPanel({
               </div>
             )}
           </div>
-          <button onClick={onClose} style={closeButtonStyle} title={t('detail.close')}>✕</button>
+          {onClose ? <button onClick={onClose} style={closeButtonStyle} title={t('detail.close')}>✕</button> : null}
         </div>
 
         {/* Stated, not just chipped: a concept borrowed from another namespace is not this
@@ -294,7 +338,7 @@ export default function DetailPanel({
           onExpandAll={onExpandAll}
         />
       ) : (
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={scrollerStyle(stacked)}>
           <DiffSection detail={node.data.diffDetail} />
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
           <OverlapSection overlaps={node.data.overlaps} />
@@ -307,7 +351,7 @@ export default function DetailPanel({
   );
 }
 
-function EdgePanel({ edge, graphData, onClose }) {
+function EdgePanel({ edge, graphData, onClose, stacked }) {
   const { t } = useTranslation();
   // Selection can arrive either as a React Flow edge (clicked in the canvas, diff data nested under
   // `data`) or as a raw graph edge (clicked in the related-changes list, diff data at the top level).
@@ -317,7 +361,7 @@ function EdgePanel({ edge, graphData, onClose }) {
   const nameOf = (id) => graphData?.nodes?.find((n) => n.id === id)?.data?.label || id;
 
   return (
-    <div style={panelStyle}>
+    <div style={stacked ? stackedBodyStyle : panelStyle}>
       <div style={{ height: 4, background: accentColor, flexShrink: 0 }} />
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -336,7 +380,7 @@ function EdgePanel({ edge, graphData, onClose }) {
               {edge.data?.label || edge.label}
             </div>
           </div>
-          <button onClick={onClose} style={closeButtonStyle} title={t('detail.close')}>✕</button>
+          {onClose ? <button onClick={onClose} style={closeButtonStyle} title={t('detail.close')}>✕</button> : null}
         </div>
 
         {/* The two ends are what a relationship is; naming them saves tracing the line back. */}
@@ -355,7 +399,7 @@ function EdgePanel({ edge, graphData, onClose }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={scrollerStyle(stacked)}>
         <DiffSection detail={detail} />
         <EvidenceSection evidence={edge.data?.evidence ?? edge.evidence}
                          missing={edge.data?.evidenceMissing ?? edge.evidenceMissing} />
@@ -376,11 +420,11 @@ function EdgePanel({ edge, graphData, onClose }) {
  * The detail view for a card with nothing to select in the graph — today the namespace's own change.
  * Reuses [DiffSection] rather than inventing a second way to show a before and after.
  */
-function ChangePanel({ change, onClose }) {
+function ChangePanel({ change, onClose, stacked }) {
   const { t } = useTranslation();
   const diff = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
   return (
-    <div style={panelStyle}>
+    <div style={stacked ? stackedBodyStyle : panelStyle}>
       <div style={{ height: 4, background: diff.color, flexShrink: 0 }} />
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -395,10 +439,10 @@ function ChangePanel({ change, onClose }) {
               {change.name || change.externalId}
             </div>
           </div>
-          <button onClick={onClose} style={closeButtonStyle} aria-label="Close">×</button>
+          {onClose ? <button onClick={onClose} style={closeButtonStyle} aria-label="Close">×</button> : null}
         </div>
       </div>
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={scrollerStyle(stacked)}>
         <DiffSection detail={{ op: change.op, impact: change.impact?.toLowerCase(), fields: change.fields || [] }} />
         <EvidenceSection evidence={change.evidence} missing={!change.evidence || change.evidence.length === 0} />
       </div>
