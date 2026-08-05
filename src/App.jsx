@@ -9,6 +9,7 @@ import {
   Panel,
   MarkerType,
   useReactFlow,
+  useStoreApi,
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
@@ -714,7 +715,8 @@ function EnlargeButton({ customHeight, containerRef }) {
 
 export default function App({ graphData: sourceGraphData, changes: changesProp, targetName, onDecide, customHeight, layout, storageKey, showMiniMap }) {
   const { t } = useTranslation();
-  const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
+  const store = useStoreApi();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   // Review selection is shared between the change list and the graph: one set, two views onto it.
@@ -1160,10 +1162,32 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     setEdges(displayEdges);
   }
 
+  /**
+   * Bring the selected element to the middle of the canvas.
+   *
+   * Not the same job as getting a node out from under a panel, though one function used to do both —
+   * and removing the overlap took this with it. Selecting a card in the list has to move the canvas
+   * to it, because the reader's whole reason for clicking is to see where it sits; and opening the
+   * panel narrows the canvas, which shifts what is visible even when nothing is covering it.
+   */
+  const focusNode = useCallback((node) => {
+    if (!node) return;
+    // With the lookup, so a node inside a group is measured where it actually sits.
+    const bounds = getNodesBounds([node], { nodeLookup: store.getState().nodeLookup });
+    if (!bounds || !bounds.width) return;
+    setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, {
+      zoom: getViewport().zoom,
+      duration: 400,
+    });
+  }, [getNodesBounds, getViewport, setCenter, store]);
+
   const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
     const deselecting = selectedNode?.id === node.id;
     setSelectedNode(deselecting ? null : node);
+    // Opening the panel takes half the width away, so a node clicked on the right of the canvas ends
+    // up outside it. Centring keeps what was just picked in the part that remains.
+    if (!deselecting) focusNode(node);
 
     // The other half of one shared selection: picking a node in the graph picks its card, exactly as
     // picking a card focuses its node. Without this the graph is somewhere to look rather than
@@ -1178,7 +1202,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
       else if (!(deselecting && !additive)) next.add(cardId);
       return next;
     });
-  }, [selectedNode, cardIdOf]);
+  }, [selectedNode, cardIdOf, focusNode]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
   // is the only place a reviewer can see what a change request did to one.
@@ -1267,7 +1291,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           const node = getNodes().find((n) => cardIdOf(n) === cardId);
           // A card with no node still has something to show, so the panel is told either way.
           setSelectedNode(node || null);
-          if (node) setSelectedEdge(null);
+          if (node) {
+            setSelectedEdge(null);
+            focusNode(node);
+          }
         }}
         // Passed through only when the host actually supplied one. Wrapping it unconditionally made
         // the panel see a callback that did nothing, so a read-only view still offered buttons and
