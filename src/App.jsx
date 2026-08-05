@@ -759,72 +759,13 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   const graphData = useMemo(() => {
     if (!changes.length) return sourceGraphData;
 
-    // The canvas is the branch, so whatever the proposal removes is simply not in it — and a change
-    // the reviewer is asked to approve had no representation at all. Put them back, marked as
-    // removals, so the picture is of the change rather than only of its outcome.
-    const nodeIdByExternalId = new Map(
-      (sourceGraphData.nodes || []).map((n) => [n.data?.externalId, n.id]),
-    );
-    const removedNodes = [...changes
-      .filter((c) => c.op === 'remove' && c.externalId && !nodeIdByExternalId.has(c.externalId))
-      .map((c) => ({
-        id: `removed:${c.externalId}`,
-        type: c.elementType === 'shared_property' || c.elementType === 'property' ? 'property' : 'entity',
-        data: {
-          label: c.name || c.externalId,
-          externalId: c.externalId,
-          description: null,
-          diff: 'remove',
-          properties: [],
-        },
-      })),
-    ];
-    removedNodes.forEach((n) => nodeIdByExternalId.set(n.data.externalId, n.id));
-
-    const existingEdgeIds = new Set((sourceGraphData.edges || []).map((e) => e.externalId));
-    const detached = changes
-      .flatMap((c) => c.relationships || [])
-      .filter((r) => r.op === 'remove' && !existingEdgeIds.has(r.externalId));
-
-    // The other end of a detached edge is usually an inline property, which the canvas draws inside
-    // its concept rather than as a node of its own — so the edge had nothing to point at and was
-    // dropped, leaving the change with no representation anywhere. Detaching one is precisely the
-    // moment it stops being inside anything, so it gets a node for as long as that is what is being
-    // proposed.
-    const detachedEndpoints = detached
-      .filter((r) => r.toId && r.to && !nodeIdByExternalId.has(r.toId))
-      .map((r) => ({
-        id: `removed:${r.toId}`,
-        type: 'property',
-        data: { label: r.to, externalId: r.toId, description: null, diff: 'remove', properties: [] },
-      }));
-    detachedEndpoints.forEach((n) => nodeIdByExternalId.set(n.data.externalId, n.id));
-    removedNodes.push(...detachedEndpoints);
-
-    const removedEdges = detached
-      .map((r) => ({
-        edge: r,
-        source: nodeIdByExternalId.get(r.fromId),
-        target: nodeIdByExternalId.get(r.toId),
-      }))
-      // An edge with nothing to attach to would still be drawn from nowhere to nowhere.
-      .filter(({ source, target }) => source && target)
-      .map(({ edge, source, target }) => ({
-        id: `removed:${edge.externalId}`,
-        externalId: edge.externalId,
-        source,
-        target,
-        label: edge.name,
-        diff: 'remove',
-      }));
-
     return {
       ...sourceGraphData,
-      edges: [...(sourceGraphData.edges || []), ...removedEdges].map((edge) => {
+      edges: (sourceGraphData.edges || []).map((edge) => {
         const change = relationshipChangeByExternalId.get(edge.externalId);
         return change ? { ...edge, diff: change.op, data: { ...edge.data, diff: change.op } } : edge;
       }),
-      nodes: [...sourceGraphData.nodes, ...removedNodes].map((node) => {
+      nodes: sourceGraphData.nodes.map((node) => {
         const change = changeByExternalId.get(node.data?.externalId);
         // A property's own change belongs on its row, not on the concept: the concept may not have
         // moved at all, and marking it would say something untrue about it.
