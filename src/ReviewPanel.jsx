@@ -98,6 +98,7 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
           const diff = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
           const isSelected = selectedIds.has(change.externalId);
           const isDecided = Boolean(change.decision);
+          const unresolvable = change.evidence?.some((e) => e.resolvable === false);
           return (
             <div
               key={change.externalId || '__namespace__'}
@@ -201,15 +202,25 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
               {/* Who says so. For an agent's proposal this is the only answer a reviewer has, and an
                   unresolvable citation is worth distinguishing from none at all. */}
               {change.evidence?.length ? (
-                <div
-                  style={{ fontSize: 11, color: '#047857', marginTop: 4 }}
-                  title={change.evidence.map((e) => e.quote).join('\n\n')}
-                >
-                  {change.evidence.some((e) => e.resolvable === false)
-                    ? t('review.citedUnresolvable', 'Cited, not re-checkable')
-                    : change.evidence[0].label
-                      ? t('review.citedFrom', 'Cited · {{label}}', { label: change.evidence[0].label })
+                <div style={{ marginTop: 4 }}>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      borderRadius: 4,
+                      padding: '1px 7px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      // An unresolvable citation is worth telling apart from a sound one: it is a
+                      // claim about a source nobody can go back to.
+                      color: unresolvable ? '#b45309' : '#047857',
+                      background: unresolvable ? '#fffbeb' : '#ecfdf5',
+                    }}
+                    title={change.evidence.map((e) => e.quote).join('\n\n')}
+                  >
+                    {unresolvable
+                      ? t('review.citedUnresolvable', 'Cited, not re-checkable')
                       : t('review.cited', 'Cited')}
+                  </span>
                 </div>
               ) : null}
 
