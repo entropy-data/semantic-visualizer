@@ -150,7 +150,6 @@ export default function DetailPanel({
   onToggleCollapse,
   onCollapseOthers,
   onExpandAll,
-  onSelectEdge,
   onClose,
   selection,
   stacked,
@@ -172,7 +171,6 @@ export default function DetailPanel({
             onToggleCollapse={onToggleCollapse}
             onCollapseOthers={onCollapseOthers}
             onExpandAll={onExpandAll}
-            onSelectEdge={onSelectEdge}
             // One control clearing one selection: an X per entry would read as "remove this one",
             // which is not what it does.
             onClose={index === 0 ? onClose : undefined}
@@ -342,7 +340,6 @@ export default function DetailPanel({
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
           <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
-          <RelatedChangesSection node={node} graphData={graphData} onSelectEdge={onSelectEdge} />
           <EntityBody node={node} changesOnly={changesOnly} />
         </div>
       )}
@@ -652,71 +649,6 @@ function ConsumersSection({ consumers }) {
  * Without this a reviewer hits a dead end: the concept is drawn as involved — it survives the
  * changes-only filter, it sits at the end of a coloured edge — but its own panel has nothing to do
  * with the request, which reads as a bug rather than as "the change is on the line, not the box".
- */
-function RelatedChangesSection({ node, graphData, onSelectEdge }) {
-  const { t } = useTranslation();
-  const related = (graphData?.edges || []).filter(
-    (e) => e.diff && (e.source === node.id || e.target === node.id),
-  );
-  if (related.length === 0) return null;
-
-  const nameOf = (id) => graphData?.nodes?.find((n) => n.id === id)?.data?.label || id;
-
-  return (
-    <div>
-      <div style={sectionHeaderStyle}>
-        {t('detail.diff.related')} ({related.length})
-      </div>
-      {related.map((e) => {
-        const diff = DIFF_STYLES[e.diff] || DIFF_STYLES.modify;
-        const isOutgoing = e.source === node.id;
-        const other = nameOf(isOutgoing ? e.target : e.source);
-        return (
-          <div
-            key={e.id}
-            onClick={onSelectEdge ? () => onSelectEdge(e) : undefined}
-            style={{
-              padding: '8px 16px',
-              borderBottom: '1px solid #f3f4f6',
-              cursor: onSelectEdge ? 'pointer' : 'default',
-            }}
-            onMouseOver={(ev) => { ev.currentTarget.style.background = '#f9fafb'; }}
-            onMouseOut={(ev) => { ev.currentTarget.style.background = 'transparent'; }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{
-                flexShrink: 0,
-                width: 15,
-                height: 15,
-                borderRadius: '50%',
-                background: diff.color,
-                color: '#fff',
-                fontSize: 10,
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                {diff.symbol}
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{e.label}</span>
-            </div>
-            {/* Direction matters: "consumes Input Port" and "consumed by Data Product" are different facts. */}
-            <div style={{ marginTop: 3, marginLeft: 21, fontSize: 12, color: '#6b7280' }}>
-              {isOutgoing ? '→ ' : '← '}{other}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/**
- * What the change request proposes for the selected element, field by field.
- *
- * Deliberately not the YAML hunk: the reviewer is already looking at the model as a graph, and a
- * patch would make them re-parse it as text to answer "what changed about this one thing".
  */
 function DiffSection({ detail }) {
   const { t } = useTranslation();
