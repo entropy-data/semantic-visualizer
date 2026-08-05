@@ -18,16 +18,12 @@ import { DIFF_STYLES } from './diffStyles';
 /** Published so the canvas can work out which strip of itself is still visible. */
 export const CHANGE_LIST_WIDTH = 300;
 
+// A column beside the canvas rather than over it, so the graph is never underneath the list.
 const panelStyle = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  bottom: 0,
   width: CHANGE_LIST_WIDTH,
+  flexShrink: 0,
   background: '#fff',
   borderRight: '1px solid #e5e7eb',
-  boxShadow: '4px 0 12px rgba(0,0,0,0.08)',
-  zIndex: 10,
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',

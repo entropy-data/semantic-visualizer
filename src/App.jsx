@@ -9,7 +9,6 @@ import {
   Panel,
   MarkerType,
   useReactFlow,
-  useStoreApi,
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
@@ -18,10 +17,13 @@ import KnowledgeNode from './KnowledgeNode';
 import EntityNode from './EntityNode';
 import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
-import DetailPanel, { DETAIL_PANEL_SHARE } from './DetailPanel';
-import ReviewPanel, { CHANGE_LIST_WIDTH } from './ReviewPanel';
+import DetailPanel from './DetailPanel';
+import ReviewPanel from './ReviewPanel';
 import { GroupActionsContext } from './GroupActionsContext';
-import { zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon } from './controlIcons';
+import {
+  zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon,
+  changesOnlyIcon, groupsIcon, erdIcon, enlargeIcon,
+} from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
 import { DIFF_STYLES } from './diffStyles';
 
@@ -650,20 +652,31 @@ function applyCollapseTransform({ nodes, edges }, collapsedSet) {
 }
 
 // Toggle button style helper
+/**
+ * A square icon button, stacked with its siblings down the edge of the canvas.
+ *
+ * Labels cost horizontal room the graph now needs — "Show as Entity-Relationship-Diagram" was wider
+ * than the canvas it sat on once the panels stopped overlapping it. A glyph cannot say "on" by
+ * itself, so the pressed state is carried by the button: filled, tinted and outlined, with the words
+ * still available as a title.
+ */
 const toggleBtnStyle = (active) => ({
-  borderRadius: 4,
+  width: 32,
+  height: 32,
+  borderRadius: 6,
   background: active ? '#eef2ff' : '#fff',
-  padding: '4px 8px',
-  fontSize: 12,
-  fontWeight: 500,
-  color: active ? '#4f46e5' : '#374151',
+  padding: 0,
+  color: active ? '#4f46e5' : '#4b5563',
   boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
   border: `1px solid ${active ? '#a5b4fc' : '#d1d5db'}`,
   cursor: 'pointer',
   display: 'inline-flex',
   alignItems: 'center',
-  gap: 4,
+  justifyContent: 'center',
 });
+
+/** Sized here rather than in each glyph so the four stay on one grid. */
+const toolbarIconStyle = { width: 17, height: 17, display: 'block' };
 
 // Enlarge/shrink button
 function EnlargeButton({ customHeight, containerRef }) {
@@ -688,18 +701,20 @@ function EnlargeButton({ customHeight, containerRef }) {
   }, [enlarged, customHeight, fitView, containerRef]);
 
   return (
-    <button onClick={toggle} style={toggleBtnStyle(false)}
-      onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
-      onMouseOut={(e) => e.currentTarget.style.background = '#fff'}>
-      {enlarged ? t('controls.shrink') : t('controls.enlarge')}
+    <button onClick={toggle} style={toggleBtnStyle(enlarged)}
+      title={enlarged ? t('controls.shrink') : t('controls.enlarge')}
+      aria-label={enlarged ? t('controls.shrink') : t('controls.enlarge')}
+      aria-pressed={enlarged}
+      onMouseOver={(e) => { if (!enlarged) e.currentTarget.style.background = '#f9fafb'; }}
+      onMouseOut={(e) => { if (!enlarged) e.currentTarget.style.background = '#fff'; }}>
+      <span style={toolbarIconStyle} aria-hidden="true">{enlargeIcon}</span>
     </button>
   );
 }
 
 export default function App({ graphData: sourceGraphData, changes: changesProp, targetName, onDecide, customHeight, layout, storageKey, showMiniMap }) {
   const { t } = useTranslation();
-  const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
-  const store = useStoreApi();
+  const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
   const containerRef = useRef(null);
   const [selectedNode, setSelectedNode] = useState(null);
   // Review selection is shared between the change list and the graph: one set, two views onto it.
@@ -1145,46 +1160,6 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     setEdges(displayEdges);
   }
 
-  /**
-   * Bring a selected element into the part of the canvas still in view.
-   *
-   * The detail panel covers half the canvas and the change list the left edge, so clicking a node
-   * on the right made it vanish behind the panel it just opened — the reviewer selected something
-   * and lost sight of it. Only pans when the element is actually covered: moving the ground under
-   * someone who could already see what they picked is its own kind of wrong.
-   */
-  const revealNode = useCallback((node) => {
-    const container = containerRef.current;
-    if (!node || !container) return;
-    // With the lookup so a node inside a group is measured where it actually sits, not relative to
-    // its parent.
-    const bounds = getNodesBounds([node], { nodeLookup: store.getState().nodeLookup });
-    if (!bounds || !bounds.width) return;
-
-    const { x: viewX, y: viewY, zoom } = getViewport();
-    const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect();
-    const left = bounds.x * zoom + viewX;
-    const right = (bounds.x + bounds.width) * zoom + viewX;
-    const top = bounds.y * zoom + viewY;
-    const bottom = (bounds.y + bounds.height) * zoom + viewY;
-
-    const visibleLeft = changes.length ? CHANGE_LIST_WIDTH : 0;
-    const visibleRight = containerWidth * (1 - DETAIL_PANEL_SHARE);
-    const margin = 32;
-    const covered = left < visibleLeft + margin || right > visibleRight - margin
-      || top < margin || bottom > containerHeight - margin;
-    if (!covered) return;
-
-    // setCenter aims at the middle of the whole canvas, half of which is behind the panel. Offset
-    // the target by the gap between that middle and the middle of what is actually visible.
-    const visibleCentre = (visibleLeft + visibleRight) / 2;
-    setCenter(
-      bounds.x + bounds.width / 2 + (containerWidth / 2 - visibleCentre) / zoom,
-      bounds.y + bounds.height / 2,
-      { zoom, duration: 400 },
-    );
-  }, [changes.length, getNodesBounds, getViewport, setCenter, store]);
-
   const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
     const deselecting = selectedNode?.id === node.id;
@@ -1193,8 +1168,6 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     // The other half of one shared selection: picking a node in the graph picks its card, exactly as
     // picking a card focuses its node. Without this the graph is somewhere to look rather than
     // somewhere to work, and a reviewer has to find the same element twice.
-    if (!deselecting) revealNode(node);
-
     const cardId = cardIdOf(node);
     if (cardId === undefined) return;
     setSelectedChangeId(deselecting ? null : cardId);
@@ -1205,7 +1178,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
       else if (!(deselecting && !additive)) next.add(cardId);
       return next;
     });
-  }, [selectedNode, cardIdOf, revealNode]);
+  }, [selectedNode, cardIdOf]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
   // is the only place a reviewer can see what a change request did to one.
@@ -1222,7 +1195,9 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
 
   // Kept together so the toolbar can live in its own row above the panels rather than under them.
   const viewControls = (
-<div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+    // Down the edge rather than across the top: the canvas is the scarce dimension once the panels
+    // sit beside it, and a column costs one icon's width instead of four buttons' worth.
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {hasDiff && (
           <button
             onClick={() => {
@@ -1233,8 +1208,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
             onMouseOver={(e) => { if (!changesOnly) e.currentTarget.style.background = '#f9fafb'; }}
             onMouseOut={(e) => { if (!changesOnly) e.currentTarget.style.background = '#fff'; }}
             title={t('toolbar.changesOnly.title')}
+                aria-label={t('toolbar.changesOnly.label')}
+                aria-pressed={changesOnly}
           >
-            {t('toolbar.changesOnly.label')}
+            <span style={toolbarIconStyle} aria-hidden="true">{changesOnlyIcon}</span>
           </button>
         )}
         {!isHierarchy && hasGroups && (
@@ -1247,8 +1224,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
             onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
             onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
             title={t('toolbar.showGroups.title')}
+                aria-label={t('toolbar.showGroups.label')}
+                aria-pressed={showGroups}
           >
-            {t('toolbar.showGroups.label')}
+            <span style={toolbarIconStyle} aria-hidden="true">{groupsIcon}</span>
           </button>
         )}
         {!isHierarchy && (
@@ -1261,8 +1240,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
             onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
             onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
             title={t('toolbar.erd.title')}
+                aria-label={t('toolbar.erd.label')}
+                aria-pressed={showProperties}
           >
-            {t('toolbar.erd.label')}
+            <span style={toolbarIconStyle} aria-hidden="true">{erdIcon}</span>
           </button>
         )}
         <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
@@ -1271,7 +1252,29 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
 
   return (
     <GroupActionsContext.Provider value={groupActions}>
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    {/* A row, not a stack. The panels used to float over the canvas, which meant opening one hid the
+        element it was describing — and every fix for that (panning the node back into view, offsetting
+        the toolbar) was working around the overlap rather than removing it. Laid out side by side, the
+        graph keeps whatever width is left and nothing is ever underneath anything. */}
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', minWidth: 0 }}>
+      <ReviewPanel
+        changes={changes}
+        targetName={targetName}
+        selectedIds={selectedChangeIds}
+        onSelectionChange={setSelectedChangeIds}
+        onFocus={(cardId) => {
+          setSelectedChangeId(cardId);
+          const node = getNodes().find((n) => cardIdOf(n) === cardId);
+          // A card with no node still has something to show, so the panel is told either way.
+          setSelectedNode(node || null);
+          if (node) setSelectedEdge(null);
+        }}
+        // Passed through only when the host actually supplied one. Wrapping it unconditionally made
+        // the panel see a callback that did nothing, so a read-only view still offered buttons and
+        // swallowed the click.
+        onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
+      />
+      <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1337,26 +1340,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         {showMiniMap && <MiniMap zoomable pannable />}
         <Panel position="top-right">{viewControls}</Panel>
       </ReactFlow>
-      <ReviewPanel
-        changes={changes}
-        targetName={targetName}
-        selectedIds={selectedChangeIds}
-        onSelectionChange={setSelectedChangeIds}
-        onFocus={(cardId) => {
-          setSelectedChangeId(cardId);
-          const node = getNodes().find((n) => cardIdOf(n) === cardId);
-          // A card with no node still has something to show, so the panel is told either way.
-          setSelectedNode(node || null);
-          if (node) {
-            setSelectedEdge(null);
-            revealNode(node);
-          }
-        }}
-        // Passed through only when the host actually supplied one. Wrapping it unconditionally made
-        // the panel see a callback that did nothing, so a read-only view still offered buttons and
-        // swallowed the click.
-        onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
-      />
+      </div>
       <DetailPanel
         // In the list's order, not click order: the panel is a second view onto the same selection,
         // and two views disagreeing about sequence is worse than either order alone.

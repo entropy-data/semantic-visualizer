@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { DIFF_STYLES } from './diffStyles';
-import { CONTROLS_ROW_HEIGHT } from './layout';
 
 // Impact is a separate channel from the diff op: how consequential a change is, independent of
 // whether it adds, changes or removes. Ordered as the review order in the change request list.
@@ -18,16 +17,14 @@ const IMPACT_COLORS = {
  */
 export const DETAIL_PANEL_SHARE = 0.5;
 
+// A column beside the canvas rather than over it. Opening it narrows the graph instead of hiding the
+// part of it the reader just clicked, which is what the panning and the toolbar offset existed to
+// paper over.
 const panelStyle = {
-  position: 'absolute',
-  top: CONTROLS_ROW_HEIGHT,
-  right: 0,
-  bottom: 0,
   width: `${DETAIL_PANEL_SHARE * 100}%`,
+  flexShrink: 0,
   background: '#fff',
   borderLeft: '1px solid #e5e7eb',
-  boxShadow: '-4px 0 12px rgba(0,0,0,0.08)',
-  zIndex: 10,
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
