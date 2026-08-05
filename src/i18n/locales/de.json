@@ -100,5 +100,17 @@
     "collapseGroup": "Gruppe einklappen",
     "propertiesChanged_one": "{{count}} Eigenschaft geändert",
     "propertiesChanged_other": "{{count}} Eigenschaften geändert"
+  },
+  "diff": {
+    "base": "Vorher"
+  },
+  "review": {
+    "frozenByConflict": "durch einen Konflikt blockiert",
+    "conflict": {
+      "bothChanged": "Seitdem hier und im Ziel geändert",
+      "changedHereRemovedThere": "Hier geändert, im Ziel seitdem entfernt",
+      "removedHereChangedThere": "Hier entfernt, im Ziel seitdem geändert",
+      "bothAdded": "Hier und im Ziel unterschiedlich hinzugefügt"
+    }
   }
 }

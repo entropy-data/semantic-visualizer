@@ -128,12 +128,26 @@ export default function ReviewPanel({ changes, selectedIds, onSelectionChange, o
               {change.owningTeam ? (
                 <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
                   {change.owningTeam}
+                  {/* The reason, not just the fact. A conflict freezes every card, so reporting the
+                      generic "not yours" told a reviewer their own team's change belonged to someone
+                      else — the wrong reason, stated with confidence. */}
                   {change.decidable === false && !change.decision ? (
-                    <span style={{ color: '#9ca3af' }}>
+                    <span style={{ color: change.blockedBy === 'conflict' ? '#b45309' : '#9ca3af' }}>
                       {' · '}
-                      {t('review.notYours', "{{team}}'s to decide", { team: change.owningTeam })}
+                      {change.blockedBy === 'conflict'
+                        ? t('review.frozenByConflict', 'frozen by a conflict')
+                        : t('review.notYours', "{{team}}'s to decide", { team: change.owningTeam })}
                     </span>
                   ) : null}
+                </div>
+              ) : null}
+
+              {change.conflictReason ? (
+                <div style={{
+                  marginTop: 4, fontSize: 11, color: '#92400e', background: '#fffbeb',
+                  border: '1px solid #fde68a', borderRadius: 4, padding: '2px 6px',
+                }}>
+                  {t('review.conflict.' + change.conflictReason, 'changed here and in the target since')}
                 </div>
               ) : null}
 

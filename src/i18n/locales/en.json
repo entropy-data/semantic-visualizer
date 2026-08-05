@@ -100,5 +100,17 @@
     "collapseGroup": "Collapse group",
     "propertiesChanged_one": "{{count}} property changed",
     "propertiesChanged_other": "{{count}} properties changed"
+  },
+  "diff": {
+    "base": "Was"
+  },
+  "review": {
+    "frozenByConflict": "frozen by a conflict",
+    "conflict": {
+      "bothChanged": "Changed here and in the target since this was branched",
+      "changedHereRemovedThere": "Changed here, removed from the target since",
+      "removedHereChangedThere": "Removed here, changed in the target since",
+      "bothAdded": "Added here and in the target, differently"
+    }
   }
 }

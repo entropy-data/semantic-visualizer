@@ -704,7 +704,7 @@ function FieldChange({ change }) {
       }}>
         {change.field}
       </div>
-      <FieldDiff field={change.field} before={change.before} after={change.after} />
+      <FieldDiff field={change.field} before={change.before} after={change.after} base={change.base} />
     </div>
   );
 }
@@ -930,7 +930,7 @@ function MapDiff({ before, after }) {
 }
 
 /** The original treatment, kept for what it suits: sentences. */
-function ProseDiff({ before, after }) {
+function ProseDiff({ before, after, base }) {
   const { t } = useTranslation();
   // Two sentences one above the other, each wrapped to four lines, are compared by memory. Side by
   // side at the same width, the words that moved are the ones that do not line up. `auto-fit` drops
@@ -938,10 +938,17 @@ function ProseDiff({ before, after }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+      // Sized so a three-way comparison still fits on one row; auto-fit collapses the spare track
+      // back into two halves when there is no base to show.
+      gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))',
       gap: 10,
       marginTop: 3,
     }}>
+      {/* The version the author wrote against, shown only where the target has moved away from it.
+          Without it a conflict reads as an ordinary change that was refused for no reason. */}
+      {base !== undefined && base !== null && (
+        <ProseColumn label={t('detail.diff.base', 'Was')} value={base} color="#6b7280" />
+      )}
       <ProseColumn label={t('detail.diff.before')} value={before} color="#dc2626" strike />
       <ProseColumn label={t('detail.diff.after')} value={after} color="#16a34a" />
     </div>
@@ -972,14 +979,19 @@ function ProseColumn({ label, value, color, strike }) {
 }
 
 /** Picks the rendering from the value's shape, falling back to prose. */
-function FieldDiff({ field, before, after }) {
-  if (isDecorated(before) || isDecorated(after)) return <ChipTransition before={before} after={after} />;
-  if (isMap(before) || isMap(after)) return <MapDiff before={before} after={after} />;
-  if (isList(before) || isList(after)) return <ListDiff before={before} after={after} />;
-  if (isBool(before) || isBool(after)) return <ChipTransition before={before} after={after} />;
-  if (ENUM_FIELDS.has(field)) return <ChipTransition before={before} after={after} />;
-  if (CODE_FIELDS.has(field)) return <ChipTransition before={before} after={after} mono />;
-  return <ProseDiff before={before} after={after} />;
+function FieldDiff({ field, before, after, base }) {
+  // A three-way situation is a diff of prose whatever the field's shape: the point is the third
+  // value, and chips side by side cannot say which of them the author never saw.
+  const threeWay = base !== undefined && base !== null;
+  if (!threeWay) {
+    if (isDecorated(before) || isDecorated(after)) return <ChipTransition before={before} after={after} />;
+    if (isMap(before) || isMap(after)) return <MapDiff before={before} after={after} />;
+    if (isList(before) || isList(after)) return <ListDiff before={before} after={after} />;
+    if (isBool(before) || isBool(after)) return <ChipTransition before={before} after={after} />;
+    if (ENUM_FIELDS.has(field)) return <ChipTransition before={before} after={after} />;
+  }
+  if (!threeWay && CODE_FIELDS.has(field)) return <ChipTransition before={before} after={after} mono />;
+  return <ProseDiff before={before} after={after} base={base} />;
 }
 
 function EntityBody({ node, changesOnly }) {
@@ -1245,7 +1257,7 @@ function PropertySection({ title, properties, count, inherited, changesOnly }) {
                 }}>
                   {f.field}
                 </div>
-                <FieldDiff field={f.field} before={f.before} after={f.after} />
+                <FieldDiff field={f.field} before={f.before} after={f.after} base={f.base} />
               </div>
             ))}
           </div>
