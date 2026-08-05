@@ -796,7 +796,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     [graphData],
   );
   const [showGroups, setShowGroups] = useState(initialToggles?.showGroups ?? false);
-  const [changesOnly, setChangesOnly] = useState(false);
+  // A review opens on what is being reviewed. The whole namespace is the context you reach for once
+  // the change stops making sense on its own, not the thing you start by scrolling past. Inert when
+  // there is no diff, so a plain graph is unaffected.
+  const [changesOnly, setChangesOnly] = useState(true);
   const [collapsedGroups, setCollapsedGroups] = useState(
     () => new Set(initialToggles?.collapsedGroups || []),
   );
@@ -1217,11 +1220,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   }, []);
 
 
-  // The detail panel covers half the canvas and the change list the rest of its left edge, so a
-  // toolbar pinned to the canvas corner became unreachable the moment a reviewer selected anything.
-  // In a review it belongs with the list, which is never covered; a standalone graph has the corner
-  // free and keeps it there.
-  const isReview = changes.length > 0;
+  // Kept together so the toolbar can live in its own row above the panels rather than under them.
   const viewControls = (
 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {hasDiff && (
@@ -1336,12 +1335,11 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
           </ControlButton>
         </Controls>
         {showMiniMap && <MiniMap zoomable pannable />}
-        {!isReview && <Panel position="top-right">{viewControls}</Panel>}
+        <Panel position="top-right">{viewControls}</Panel>
       </ReactFlow>
       <ReviewPanel
         changes={changes}
         targetName={targetName}
-        controls={viewControls}
         selectedIds={selectedChangeIds}
         onSelectionChange={setSelectedChangeIds}
         onFocus={(cardId) => {

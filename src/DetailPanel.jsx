@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { DIFF_STYLES } from './diffStyles';
+import { CONTROLS_ROW_HEIGHT } from './layout';
 
 // Impact is a separate channel from the diff op: how consequential a change is, independent of
 // whether it adds, changes or removes. Ordered as the review order in the change request list.
@@ -19,7 +20,7 @@ export const DETAIL_PANEL_SHARE = 0.5;
 
 const panelStyle = {
   position: 'absolute',
-  top: 0,
+  top: CONTROLS_ROW_HEIGHT,
   right: 0,
   bottom: 0,
   width: `${DETAIL_PANEL_SHARE * 100}%`,

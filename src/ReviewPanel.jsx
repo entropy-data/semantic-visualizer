@@ -41,7 +41,7 @@ const eyebrowStyle = {
   color: '#6b7280',
 };
 
-export default function ReviewPanel({ changes, targetName, controls, selectedIds, onSelectionChange, onFocus, onDecide }) {
+export default function ReviewPanel({ changes, targetName, selectedIds, onSelectionChange, onFocus, onDecide }) {
   const { t } = useTranslation();
 
   const decidable = useMemo(
@@ -72,13 +72,6 @@ export default function ReviewPanel({ changes, targetName, controls, selectedIds
           {t('review.pending', '{{count}} to review', { count: decidable.size })}
         </div>
       </div>
-
-      {/* How the canvas is drawn, kept where it stays reachable. */}
-      {controls ? (
-        <div style={{ padding: '8px 16px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-          {controls}
-        </div>
-      ) : null}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
         {changes.map((change) => {
