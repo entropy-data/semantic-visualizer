@@ -119,6 +119,14 @@
       "changedHereRemovedThere": "Removed from {{target}}",
       "removedHereChangedThere": "Changed in {{target}} after this proposal removed it",
       "bothAdded": "Also added in {{target}}, with different content"
+    },
+    "decision": {
+      "accepted": "Accepted",
+      "rejected": "Rejected"
+    },
+    "summary": {
+      "accepted": "{{count}} accepted",
+      "rejected": "{{count}} rejected"
     }
   }
 }

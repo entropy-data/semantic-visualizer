@@ -19,6 +19,12 @@ import { DIFF_STYLES } from './diffStyles';
 export const CHANGE_LIST_WIDTH = 300;
 
 // A column beside the canvas rather than over it, so the graph is never underneath the list.
+/** One tone per verdict, used for the badge and for the faint wash over a settled card. */
+const DECISION_TONE = {
+  accepted: { text: '#15803d', badge: '#dcfce7', tint: '#f6fefa' },
+  rejected: { text: '#b91c1c', badge: '#fee2e2', tint: '#fffafa' },
+};
+
 const panelStyle = {
   width: CHANGE_LIST_WIDTH,
   flexShrink: 0,
@@ -48,6 +54,8 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
     () => [...selectedIds].filter((id) => decidable.has(id)),
     [selectedIds, decidable],
   );
+  const accepted = useMemo(() => changes.filter((c) => c.decision === 'accepted').length, [changes]);
+  const rejected = useMemo(() => changes.filter((c) => c.decision === 'rejected').length, [changes]);
 
   if (!changes || changes.length === 0) return null;
 
@@ -67,6 +75,22 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
         <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginTop: 2 }}>
           {t('review.pending', '{{count}} to review', { count: decidable.size })}
         </div>
+        {/* What has already been settled, so the state of the whole proposal is legible without
+            reading every card — the same question the list view answers with "waiting on". */}
+        {(accepted || rejected) ? (
+          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3, display: 'flex', gap: 10 }}>
+            {accepted ? (
+              <span style={{ color: DECISION_TONE.accepted.text }}>
+                {t('review.summary.accepted', '{{count}} accepted', { count: accepted })}
+              </span>
+            ) : null}
+            {rejected ? (
+              <span style={{ color: DECISION_TONE.rejected.text }}>
+                {t('review.summary.rejected', '{{count}} rejected', { count: rejected })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
@@ -90,8 +114,10 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                 padding: '8px 10px',
                 marginBottom: 6,
                 cursor: 'pointer',
-                opacity: isDecided ? 0.55 : change.decidable === false ? 0.75 : 1,
-                background: change.decidable === false && !isDecided ? '#fafafa' : '#fff',
+                opacity: change.decidable === false && !isDecided ? 0.75 : 1,
+                background: isDecided ? DECISION_TONE[change.decision]?.tint || '#fff' : (
+                  change.decidable === false ? '#fafafa' : '#fff'
+                ),
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -192,9 +218,21 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                 <div key={note} style={{ fontSize: 11, color: '#b45309', marginTop: 4 }}>{note}</div>
               ))}
 
+              {/* Said as a verdict rather than a whisper: a reviewer coming back to a part-decided
+                  proposal is looking for exactly this, and grey text at 55% opacity was hiding it. */}
               {change.decision ? (
-                <div style={{ fontSize: 11, color: '#374151', marginTop: 4, textTransform: 'capitalize' }}>
-                  {change.decision}
+                <div style={{ marginTop: 5 }}>
+                  <span style={{
+                    display: 'inline-block',
+                    borderRadius: 4,
+                    padding: '1px 7px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: DECISION_TONE[change.decision]?.text || '#374151',
+                    background: DECISION_TONE[change.decision]?.badge || '#f3f4f6',
+                  }}>
+                    {t(`review.decision.${change.decision}`, change.decision)}
+                  </span>
                 </div>
               ) : null}
             </div>
