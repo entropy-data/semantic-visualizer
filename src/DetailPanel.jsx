@@ -335,7 +335,11 @@ export default function DetailPanel({
         />
       ) : (
         <div style={scrollerStyle(stacked)}>
+          {/* What changed about it, then inside it, then around it — and only afterwards who says
+              so. Evidence sat between the relationships and the properties, splitting one account of
+              the change in half with a statement about its sourcing. */}
           <DiffSection detail={node.data.diffDetail} />
+          <EntityBody node={node} changesOnly={changesOnly} />
           {/* The card's, not the node's: selecting a shared property resolves to the concept that
               governs it, so an unguarded render put Customer's relationship changes under Customer
               Email's name. Shown only where the two are the same element. */}
@@ -344,7 +348,6 @@ export default function DetailPanel({
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
           <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
-          <EntityBody node={node} changesOnly={changesOnly} />
         </div>
       )}
     </div>
