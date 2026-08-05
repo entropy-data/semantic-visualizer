@@ -129,10 +129,6 @@
       "rejected": "{{count}} rejected"
     },
     "willChange": "{{count}} already decided",
-    "properties_one": "property",
-    "properties_other": "properties",
-    "relationships_one": "relationship",
-    "relationships_other": "relationships",
     "impact": {
       "structural": "Structural",
       "descriptive": "Descriptive",

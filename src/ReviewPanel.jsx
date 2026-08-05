@@ -32,33 +32,6 @@ const IMPACT_COLORS = {
   cosmetic: '#64748b',
 };
 
-/**
- * What this change did, in the space of one line.
- *
- * Named fields first — they are what a reviewer recognises — then signed counts for what hangs off
- * the concept, because a sign reads faster than a noun.
- */
-function describeChange(change, t) {
-  const parts = [];
-  const fields = (change.fields || []).map((f) => f.field);
-  if (fields.length) {
-    parts.push(fields.length > 2 ? `${fields.slice(0, 2).join(', ')} +${fields.length - 2}` : fields.join(', '));
-  }
-  const signed = (items, key) => {
-    const added = items.filter((i) => i.op === 'add').length;
-    const removed = items.filter((i) => i.op === 'remove').length;
-    const changed = items.length - added - removed;
-    return [
-      added ? `+${added}` : null,
-      removed ? `−${removed}` : null,
-      changed ? `~${changed}` : null,
-    ].filter(Boolean).join(' ') + ' ' + t(key, { count: items.length });
-  };
-  if (change.properties?.length) parts.push(signed(change.properties, 'review.properties'));
-  if (change.relationships?.length) parts.push(signed(change.relationships, 'review.relationships'));
-  return parts.join(' · ');
-}
-
 const panelStyle = {
   width: CHANGE_LIST_WIDTH,
   flexShrink: 0,
@@ -146,7 +119,6 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
           const isSelected = selectedIds.has(change.externalId);
           const isDecided = Boolean(change.decision);
           const unresolvable = change.evidence?.some((e) => e.resolvable === false);
-          const summary = describeChange(change, t);
           return (
             <div
               key={change.externalId || '__namespace__'}
@@ -208,8 +180,17 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                   explanation, and a reviewer clicking Accept on someone else's element deserves to
                   know before rather than after. */}
               {change.owningTeam ? (
-                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
-                  {change.owningTeam}
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {/* Whatever the host handed over — it happens to be a team here, but the panel only
+                      knows it is a value with a name and possibly a picture. */}
+                  {change.owner?.iconUrl ? (
+                    <img src={change.owner.iconUrl} alt="" aria-hidden="true"
+                         style={{ width: 14, height: 14, flexShrink: 0, objectFit: 'contain' }} />
+                  ) : change.owner?.icon ? (
+                    <span style={{ width: 14, height: 14, display: 'inline-flex', flexShrink: 0 }}
+                          dangerouslySetInnerHTML={{ __html: change.owner.icon }} />
+                  ) : null}
+                  {change.owner?.label || change.owningTeam}
                   {/* The reason, not just the fact. A conflict freezes every card, so reporting the
                       generic "not yours" told a reviewer their own team's change belonged to someone
                       else — the wrong reason, stated with confidence. */}
@@ -245,12 +226,7 @@ export default function ReviewPanel({ changes, targetName, selectedIds, onSelect
                 </div>
               ) : null}
 
-              {/* What moved, rather than how much of it. Counting sub-changes said nothing about the
-                  concept's own fields, so a card that rewrote a description and reassigned an owner
-                  reported only the property hanging off it. */}
-              {summary ? (
-                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>{summary}</div>
-              ) : null}
+
 
               {/* Who says so. For an agent's proposal this is the only answer a reviewer has, and an
                   unresolvable citation is worth distinguishing from none at all. */}
