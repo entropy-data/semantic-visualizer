@@ -62,8 +62,7 @@ if (document.readyState === 'loading') {
 document.addEventListener('htmx:load', mountAll);
 
 /**
- * Explicit mount, for a host that has more to supply than a URL — currently the review screen, which
- * passes a change list and needs a callback when a reviewer decides something.
+ * Explicit mount, for a host that has more to supply than a URL.
  *
  * Deliberately shaped like the data contract editor's `init({...})` rather than inventing a
  * convention: entropy-data already embeds components that way, and a callback is what lets this stay
@@ -73,11 +72,12 @@ document.addEventListener('htmx:load', mountAll);
  * @param {object}   options
  * @param {string|Element} options.container   selector or element to mount into
  * @param {object}   options.graphData         `{nodes, edges}`, e.g. from the namespace graph endpoint
- * @param {Array}    [options.changes]         review cards; omit for a plain graph
- * @param {Function} [options.onDecide]        `({decision, externalIds}) => Promise<Array>` — resolves
- *                                             to the updated change list
- * @param {string}   [options.targetName]      what the proposal is measured against, named as the
- *                                              host names it, so conflict text can say so
+ * @param {boolean}  [options.changesOnly]     open showing only what carries a diff
+ * @param {string}   [options.focus]           external id to centre and select on mount
+ * @param {Function} [options.onSelect]        `(externalId, node) => void` — the host owns what a
+ *                                             click means; supplying this also withholds the built-in
+ *                                             detail panel, so one click opens one account of an
+ *                                             element rather than two
  * @param {string}   [options.locale]
  * @param {string}   [options.height]
  */
@@ -97,14 +97,14 @@ export function init(options) {
   if (options.locale) i18n.changeLanguage(options.locale);
 
   const root = createRoot(container);
-  const render = (changes) => root.render(
+  const render = () => root.render(
     <I18nextProvider i18n={i18n}>
       <ReactFlowProvider>
         <App
           graphData={options.graphData}
-          changes={changes}
-          targetName={options.targetName}
-          onDecide={options.onDecide}
+          changesOnly={options.changesOnly}
+          focus={options.focus}
+          onSelect={options.onSelect}
           customHeight={height}
           layout={options.layout || 'force'}
           storageKey={options.storageKey || storageKeyFor(options.container)}
@@ -114,8 +114,6 @@ export function init(options) {
     </I18nextProvider>
   );
 
-  render(options.changes || []);
-  // The host owns the write, so it also owns the truth afterwards: whatever the callback resolves to
-  // replaces the list. Closing a round changes every row, not just the one that was decided.
-  return { update: (changes) => render(changes) };
+  render();
+  return { update: render };
 }

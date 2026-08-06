@@ -158,77 +158,9 @@ const KeyIcon = () => (
   </svg>
 );
 
-/**
- * Accept and reject, at the foot of what they act on.
- *
- * They used to sit under the change list on the far side of the screen, which meant reading a change
- * here and acting on it a thousand pixels away — and because the selection outlived this panel, a
- * reviewer could decide with nothing on screen describing what they were deciding. Sticky rather
- * than in the flow: a long change must not put its own verdict below the fold.
- */
-function DecisionFooter({ changes, onDecide }) {
-  const { t } = useTranslation();
-  if (!onDecide) return null;
-  const present = changes.filter(Boolean);
-  if (present.length === 0) return null;
-  const decidable = present.filter((c) => c.decidable !== false);
-
-  // Why it will not respond, where the reviewer is looking when they wonder. The card says it too,
-  // but a reader who came in through the graph never saw the card.
-  if (decidable.length === 0) {
-    const [only] = present;
-    return (
-      <div style={footerStyle}>
-        <div style={{ fontSize: 12, color: only.blockedBy === 'conflict' ? '#b45309' : '#6b7280' }}>
-          {only.blockedBy === 'conflict'
-            ? t('review.frozenByConflict', 'conflict must be resolved first')
-            : t('review.notYours', "{{team}}'s to decide", { team: only.owningTeam })}
-        </div>
-      </div>
-    );
-  }
-
-  const alreadyDecided = decidable.filter((c) => c.decision);
-  const ids = decidable.map((c) => c.externalId);
-  // Silent for the ordinary case: one undecided change, where the panel above already says which.
-  const note = present.length > 1
-    ? (present.length === decidable.length
-      ? t('review.selected', '{{count}} selected', { count: present.length })
-      : t('review.selectedPartial', '{{total}} selected, {{count}} you can decide', {
-        total: present.length,
-        count: decidable.length,
-      }))
-    : null;
-
-  return (
-    <div style={footerStyle}>
-      {(note || alreadyDecided.length) ? (
-        <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8 }}>
-          {note}
-          {alreadyDecided.length ? (
-            <span style={{ color: '#b45309' }}>
-              {note ? ' · ' : ''}
-              {t('review.willChange', '{{count}} already decided', { count: alreadyDecided.length })}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button type="button" onClick={() => onDecide('accepted', ids)} style={decisionButtonStyle(DIFF_STYLES.add.color)}>
-          {t('review.accept', 'Accept')}
-        </button>
-        <button type="button" onClick={() => onDecide('rejected', ids)} style={decisionButtonStyle(DIFF_STYLES.remove.color)}>
-          {t('review.reject', 'Reject')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export default function DetailPanel({
   node,
   edge,
-  change,
   changesOnly,
   graphData,
   isCollapsed,
@@ -236,46 +168,10 @@ export default function DetailPanel({
   onCollapseOthers,
   onExpandAll,
   onClose,
-  onDecide,
-  selection,
   stacked,
 }) {
   const { t } = useTranslation();
-  // Selecting three cards and being shown one is the panel disagreeing with the list about what is
-  // selected. Stacked in the list's order, so the reader's eye lands where they last clicked.
-  if (!stacked && selection && selection.length > 1) {
-    return (
-      <div style={panelStyle}>
-        {/* The stack scrolls; the verdict does not go with it. */}
-        <div style={{ flex: 1, overflow: 'auto' }}>
-        {selection.map((item, index) => (
-          <DetailPanel
-            key={item.key}
-            node={item.node}
-            change={item.change}
-            changesOnly={changesOnly}
-            graphData={graphData}
-            isCollapsed={isCollapsed}
-            onToggleCollapse={onToggleCollapse}
-            onCollapseOthers={onCollapseOthers}
-            onExpandAll={onExpandAll}
-            // One control clearing one selection: an X per entry would read as "remove this one",
-            // which is not what it does.
-            onClose={index === 0 ? onClose : undefined}
-            stacked
-          />
-        ))}
-        </div>
-        <DecisionFooter changes={selection.map((item) => item.change)} onDecide={onDecide} />
-      </div>
-    );
-  }
   if (edge) return <EdgePanel edge={edge} graphData={graphData} onClose={onClose} stacked={stacked} />;
-  // A change with no node behind it — the namespace's own, which is a card without a place on the
-  // canvas. Selecting it showed an empty panel, which read as the click having failed.
-  if (!node && change) {
-    return <ChangePanel change={change} onClose={onClose} stacked={stacked} onDecide={stacked ? undefined : onDecide} />;
-  }
   if (!node) return null;
 
   const type = node.type || 'entity';
@@ -432,19 +328,11 @@ export default function DetailPanel({
               the change in half with a statement about its sourcing. */}
           <DiffSection detail={node.data.diffDetail} />
           <EntityBody node={node} changesOnly={changesOnly} />
-          {/* The card's, not the node's: selecting a shared property resolves to the concept that
-              governs it, so an unguarded render put Customer's relationship changes under Customer
-              Email's name. Shown only where the two are the same element. */}
-          <RelationshipChangesSection
-            relationships={change?.externalId === node.data?.externalId ? change.relationships : null} />
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
           <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
         </div>
       )}
-      {/* Only when this panel is the whole column: inside a stack the footer belongs to the stack,
-          not to each entry, or five selected changes would offer five sets of buttons. */}
-      {!stacked ? <DecisionFooter changes={[change]} onDecide={onDecide} /> : null}
     </div>
   );
 }
@@ -514,41 +402,6 @@ function EdgePanel({ edge, graphData, onClose, stacked }) {
  * in a document somewhere else. An element changed with nothing cited is called out: absence of
  * evidence is the thing worth noticing, and it is invisible unless stated.
  */
-/**
- * The detail view for a card with nothing to select in the graph — today the namespace's own change.
- * Reuses [DiffSection] rather than inventing a second way to show a before and after.
- */
-function ChangePanel({ change, onClose, stacked, onDecide }) {
-  const { t } = useTranslation();
-  const diff = DIFF_STYLES[change.op] || DIFF_STYLES.modify;
-  return (
-    <div style={stacked ? stackedBodyStyle : panelStyle}>
-      <div style={{ height: 4, background: diff.color, flexShrink: 0 }} />
-      <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
-              textTransform: 'uppercase', color: '#6b7280',
-            }}>
-              {change.elementType}
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', wordBreak: 'break-word' }}>
-              {change.name || change.externalId}
-            </div>
-          </div>
-          {onClose ? <button onClick={onClose} style={closeButtonStyle} aria-label="Close">×</button> : null}
-        </div>
-      </div>
-      <div style={scrollerStyle(stacked)}>
-        <DiffSection detail={{ op: change.op, impact: change.impact?.toLowerCase(), fields: change.fields || [] }} />
-        <EvidenceSection evidence={change.evidence} missing={!change.evidence || change.evidence.length === 0} />
-      </div>
-      <DecisionFooter changes={[change]} onDecide={onDecide} />
-    </div>
-  );
-}
-
 /**
  * What the proposal does to this concept's relationships.
  *

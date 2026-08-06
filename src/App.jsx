@@ -20,7 +20,6 @@ import EntityNode from './EntityNode';
 import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
-import ReviewPanel from './ReviewPanel';
 import { GroupActionsContext } from './GroupActionsContext';
 import {
   zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon,
@@ -714,7 +713,16 @@ function EnlargeButton({ customHeight, containerRef }) {
   );
 }
 
-export default function App({ graphData: sourceGraphData, changes: changesProp, targetName, onDecide, customHeight, layout, storageKey, showMiniMap }) {
+export default function App({
+  graphData: sourceGraphData,
+  customHeight,
+  layout,
+  storageKey,
+  showMiniMap,
+  changesOnly: changesOnlyProp,
+  focus,
+  onSelect,
+}) {
   const { t } = useTranslation();
   const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
   const store = useStoreApi();
@@ -723,99 +731,10 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   // React Flow's own measurement, so centring is driven by the number it uses rather than a copy.
   const flowWidth = useStore((state) => state.width);
   const [selectedNode, setSelectedNode] = useState(null);
-  // Review selection is shared between the change list and the graph: one set, two views onto it.
-  // Any graph element resolves to the card that governs it, so selecting a property node selects the
-  // concept holding it and a box-selection collapses to distinct cards rather than to nodes.
-  const changes = changesProp || sourceGraphData.changes || [];
-  const [selectedChangeIds, setSelectedChangeIds] = useState(() => new Set());
-  const [selectedChangeId, setSelectedChangeId] = useState(null);
-  // Keyed on the element's stable id, never the node id: a node's id is an internal UUID that means
-  // nothing to a change list, an export or a citation.
-  const changeByExternalId = useMemo(() => {
-    const map = new Map();
-    changes.forEach((change) => {
-      map.set(change.externalId, change);
-      // An inline property is reviewed inside its concept, so its node resolves to that card.
-      (change.properties || []).forEach((p) => map.set(p.externalId, change));
-    });
-    return map;
-  }, [changes]);
-  // A property's own change, keyed by its stable id — the concept's card carries these folded in.
-  const propertyChangeByExternalId = useMemo(() => {
-    const map = new Map();
-    changes.forEach((change) => (change.properties || []).forEach((p) => map.set(p.externalId, p)));
-    return map;
-  }, [changes]);
-  const relationshipChangeByExternalId = useMemo(() => {
-    const map = new Map();
-    changes.forEach((c) => (c.relationships || []).forEach((r) => map.set(r.externalId, r)));
-    return map;
-  }, [changes]);
-  const cardIdOf = (node) => changeByExternalId.get(node?.data?.externalId)?.externalId;
-
-  // The graph is the branch's state, so on its own it shows what the namespace *would* look like
-  // without saying which parts are the proposal. The marks come from the change list rather than from
-  // the graph endpoint, which is generic and has no idea a proposal exists.
-  const graphData = useMemo(() => {
-    if (!changes.length) return sourceGraphData;
-
-    return {
-      ...sourceGraphData,
-      edges: (sourceGraphData.edges || []).map((edge) => {
-        const change = relationshipChangeByExternalId.get(edge.externalId);
-        return change ? { ...edge, diff: change.op, data: { ...edge.data, diff: change.op } } : edge;
-      }),
-      nodes: sourceGraphData.nodes.map((node) => {
-        const change = changeByExternalId.get(node.data?.externalId);
-        // A property's own change belongs on its row, not on the concept: the concept may not have
-        // moved at all, and marking it would say something untrue about it.
-        const listed = (node.data?.properties || []).map((property) => {
-          const propertyChange = propertyChangeByExternalId.get(property.externalId);
-          return propertyChange
-            ? { ...property, diff: propertyChange.op, diffDetail: { fields: propertyChange.fields || [] } }
-            : property;
-        });
-        // A property the proposal removes is not in the branch, so it is not in the list this
-        // annotates — and the concept losing it said nothing about the loss. Appended from the
-        // change itself, which is the only place it still exists.
-        const seen = new Set(listed.map((p) => p.externalId));
-        const removedProperties = (change?.properties || [])
-          .filter((p) => p.op === 'remove' && !seen.has(p.externalId))
-          .map((p) => ({
-            externalId: p.externalId,
-            name: p.name || p.externalId,
-            description: null,
-            shared: false,
-            inherited: false,
-            diff: 'remove',
-            diffDetail: { fields: p.fields || [] },
-          }));
-        const properties = [...listed, ...removedProperties];
-
-        // Only a card of its own marks the node: an inline property resolves to its concept's card,
-        // and marking the concept with the property's op would overstate what changed.
-        const own = change && change.externalId === node.data?.externalId ? change : null;
-        if (!own && properties === node.data?.properties) return node;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            properties,
-            ...(own ? {
-              diff: own.op,
-              // The panel already knows how to say "Does not exist yet. Approving this request
-              // creates it." and to lay out before/after — it was only ever missing the data.
-              diffDetail: { op: own.op, impact: own.impact?.toLowerCase(), fields: own.fields || [] },
-              evidence: own.evidence || [],
-              // Distinct from an empty list: nothing cited is a fact worth stating, not an absence
-              // worth hiding.
-              evidenceMissing: !own.evidence || own.evidence.length === 0,
-            } : {}),
-          },
-        };
-      }),
-    };
-  }, [sourceGraphData, changes, changeByExternalId, propertyChangeByExternalId, relationshipChangeByExternalId]);
+  // The payload arrives already saying what the proposal does to each element — marks included. It
+  // used to be annotated here from a change list the host passed in, which meant only a client
+  // holding that list could read the picture; the server settles it now, for every reader.
+  const graphData = sourceGraphData;
   const [selectedEdge, setSelectedEdge] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
   // (which lives inside an entity node's property list) wouldn't be visible.
@@ -837,7 +756,7 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
   // A review opens on what is being reviewed. The whole namespace is the context you reach for once
   // the change stops making sense on its own, not the thing you start by scrolling past. Inert when
   // there is no diff, so a plain graph is unaffected.
-  const [changesOnly, setChangesOnly] = useState(true);
+  const [changesOnly, setChangesOnly] = useState(changesOnlyProp ?? true);
   const [collapsedGroups, setCollapsedGroups] = useState(
     () => new Set(initialToggles?.collapsedGroups || []),
   );
@@ -1218,25 +1137,34 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
     if (selectedNode) focusNode(selectedNode);
   }, [selectedNode, flowWidth, focusNode]);
 
+  /**
+   * Centre on what the host says is being read.
+   *
+   * The graph is beside a page about one element, so it opens on that element rather than on the
+   * whole picture with the reader left to find it. Marked selected as well as centred: a node in the
+   * middle of a canvas is not obviously the subject unless it says so.
+   */
+  const focusedRef = useRef(null);
+  useEffect(() => {
+    if (!focus || focusedRef.current === focus) return;
+    const node = getNodes().find((n) => n.data?.externalId === focus);
+    // Retried through `nodes` because the first render has none yet — and guarded by the ref because
+    // selecting one recomputes them, which without it is a loop that renders until React gives up.
+    if (!node) return;
+    focusedRef.current = focus;
+    setSelectedNode(node);
+  }, [focus, getNodes, nodes]);
+
   const onNodeClick = useCallback((event, node) => {
     setSelectedEdge(null);
     const deselecting = selectedNode?.id === node.id;
     setSelectedNode(deselecting ? null : node);
 
-    // The other half of one shared selection: picking a node in the graph picks its card, exactly as
-    // picking a card focuses its node. Without this the graph is somewhere to look rather than
-    // somewhere to work, and a reviewer has to find the same element twice.
-    const cardId = cardIdOf(node);
-    if (cardId === undefined) return;
-    setSelectedChangeId(deselecting ? null : cardId);
-    const additive = event.metaKey || event.ctrlKey || event.shiftKey;
-    setSelectedChangeIds((prev) => {
-      const next = new Set(additive ? prev : []);
-      if (additive && prev.has(cardId)) next.delete(cardId);
-      else if (!(deselecting && !additive)) next.add(cardId);
-      return next;
-    });
-  }, [selectedNode, cardIdOf]);
+    // A host may own what a click means — the review does, where picking a node is picking which
+    // change to read, and the page that shows it is not this component. Reported by stable id, the
+    // only identifier that means anything outside this process.
+    if (onSelect && !deselecting && node.data?.externalId) onSelect(node.data.externalId, node);
+  }, [selectedNode, onSelect]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
   // is the only place a reviewer can see what a change request did to one.
@@ -1315,19 +1243,6 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         the toolbar) was working around the overlap rather than removing it. Laid out side by side, the
         graph keeps whatever width is left and nothing is ever underneath anything. */}
     <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', minWidth: 0 }}>
-      <ReviewPanel
-        changes={changes}
-        targetName={targetName}
-        selectedIds={selectedChangeIds}
-        onSelectionChange={setSelectedChangeIds}
-        onFocus={(cardId) => {
-          setSelectedChangeId(cardId);
-          const node = getNodes().find((n) => cardIdOf(n) === cardId);
-          // A card with no node still has something to show, so the panel is told either way.
-          setSelectedNode(node || null);
-          if (node) setSelectedEdge(null);
-        }}
-      />
       <div ref={canvasRef} style={{ flex: 1, minWidth: 0, position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
@@ -1395,34 +1310,18 @@ export default function App({ graphData: sourceGraphData, changes: changesProp, 
         <Panel position="top-right">{viewControls}</Panel>
       </ReactFlow>
       </div>
+      {/* Withheld when the host takes the selection itself: a host that answers a click with its own
+          account of the element does not want a second one opening beside it. */}
       <DetailPanel
-        // In the list's order, not click order: the panel is a second view onto the same selection,
-        // and two views disagreeing about sequence is worse than either order alone.
-        selection={selectedChangeIds.size > 1
-          ? changes
-            .filter((c) => selectedChangeIds.has(c.externalId))
-            .map((c) => ({
-              key: c.externalId,
-              change: c,
-              node: getNodes().find((n) => cardIdOf(n) === c.externalId) || null,
-            }))
-          : undefined}
-        node={selectedNode}
-        change={changes.find((c) => c.externalId === selectedChangeId) || null}
+        node={onSelect ? null : selectedNode}
         changesOnly={changesOnly}
-        edge={selectedEdge}
+        edge={onSelect ? null : selectedEdge}
         graphData={graphData}
         isCollapsed={selectedNode ? collapsedGroups.has(selectedNode.id) : false}
         onToggleCollapse={toggleCollapse}
         onCollapseOthers={collapseOthers}
         onExpandAll={expandAll}
-        // Passed through only when the host actually supplied one. Wrapping it unconditionally made
-        // the panel see a callback that did nothing, so a read-only view still offered buttons and
-        // swallowed the click.
-        onDecide={onDecide ? (decision, externalIds) => onDecide({ decision, externalIds }) : undefined}
-        // Closing has to clear the selected card too: leaving it set meant the panel fell straight
-        // through to the card's own view, so the close button looked like it had done nothing.
-        onClose={() => { setSelectedNode(null); setSelectedEdge(null); setSelectedChangeId(null); }}
+        onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
       />
     </div>
     </GroupActionsContext.Provider>
