@@ -62,3 +62,10 @@
   stroke: #888 !important;
   stroke-width: 2.5px !important;
 }
+
+/* Edge labels read as chips over the graph, so they belong above every edge layer. React Flow gives
+   each zIndex band its own SVG and leaves this container below the raised ones, which put a diff
+   edge's dashes through a neighbouring label. Pointer events stay off, so nothing else changes. */
+.react-flow__edgelabel-renderer {
+  z-index: 11;
+}

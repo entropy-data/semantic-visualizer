@@ -1034,6 +1034,20 @@ export default function App({
         };
       });
     }
+    // Changes only, with nothing selected: the diff is the subject and the neighbours are context,
+    // so a relationship the proposal does not touch reads as background. Without this the dimmed
+    // nodes were joined by full-strength lines and labels, which drew the eye to the context.
+    if (changesOnly && hasDiff) {
+      return layouted.edges.map((edge) => (edge.data?.diff ? edge : {
+        ...edge,
+        style: { ...edge.style, stroke: '#e2e8f0', strokeWidth: 1 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#e2e8f0', width: 14, height: 14 },
+        data: { ...edge.data, dimmed: true },
+        labelStyle: { fontSize: 10, fill: '#cbd5e1', fontWeight: 500 },
+        labelBgStyle: { fill: '#fff', fillOpacity: 0.6 },
+        zIndex: 0,
+      }));
+    }
     // Search context: dim edges where either endpoint is a non-match (the
     // server already drops context↔context edges, so what remains is
     // match↔match — kept full — and match↔context — dimmed).
@@ -1059,7 +1073,7 @@ export default function App({
         labelBgStyle: { fill: '#fff', fillOpacity: 0.5 },
       };
     });
-  }, [layouted.edges, selectedNode, selectedEdge, adjacency, layouted.nodes]);
+  }, [layouted.edges, selectedNode, selectedEdge, adjacency, layouted.nodes, changesOnly, hasDiff]);
 
   // Initial state: skip the saved-position overlay when mounting with a
   // filtered subgraph. HTMX morph re-mounts this component on each search
