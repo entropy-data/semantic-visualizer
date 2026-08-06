@@ -731,9 +731,6 @@ export default function App({
   // React Flow's own measurement, so centring is driven by the number it uses rather than a copy.
   const flowWidth = useStore((state) => state.width);
   const [selectedNode, setSelectedNode] = useState(null);
-  // Whether the host took the last click and is showing the element itself, in which case a panel
-  // here would be a second account of the same thing.
-  const [panelClaimed, setPanelClaimed] = useState(false);
   // The payload arrives already saying what the proposal does to each element — marks included. It
   // used to be annotated here from a change list the host passed in, which meant only a client
   // holding that list could read the picture; the server settles it now, for every reader.
@@ -1167,14 +1164,10 @@ export default function App({
     // change to read, and the page that shows it is not this component. Reported by stable id, the
     // only identifier that means anything outside this process.
     //
-    // Whether it owns *this* click is the host's answer, not a standing arrangement: a review has a
-    // page for the elements a proposal touches and none for the neighbours drawn around them. Saying
-    // so returns the click, and the panel describes the element as it would anywhere else.
-    if (onSelect && !deselecting && node.data?.externalId) {
-      setPanelClaimed(onSelect(node.data.externalId, node) === true);
-    } else {
-      setPanelClaimed(false);
-    }
+    // Whether it acts on *this* one is the host's business: a review has a page for the elements a
+    // proposal touches and none for the neighbours drawn around them, so it ignores those rather
+    // than navigating somewhere that cannot exist.
+    if (onSelect && !deselecting && node.data?.externalId) onSelect(node.data.externalId, node);
   }, [selectedNode, onSelect]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
@@ -1321,12 +1314,13 @@ export default function App({
         <Panel position="top-right">{viewControls}</Panel>
       </ReactFlow>
       </div>
-      {/* Withheld only for the clicks the host actually claimed: it answers those with its own
-          account of the element, and two of them beside each other is one too many. */}
+      {/* Withheld entirely when the host takes the selection: it is showing the element itself, and
+          a panel restating it beside the picture is a second account of the same thing — including
+          on arrival, where focusing an element would otherwise open one nobody asked for. */}
       <DetailPanel
-        node={panelClaimed ? null : selectedNode}
+        node={onSelect ? null : selectedNode}
         changesOnly={changesOnly}
-        edge={selectedEdge}
+        edge={onSelect ? null : selectedEdge}
         graphData={graphData}
         isCollapsed={selectedNode ? collapsedGroups.has(selectedNode.id) : false}
         onToggleCollapse={toggleCollapse}
