@@ -44,6 +44,7 @@
     "noProperties": "Keine Eigenschaften",
     "group": "Gruppe",
     "expandGroup": "Gruppe aufklappen",
-    "collapseGroup": "Gruppe einklappen"
+    "collapseGroup": "Gruppe einklappen",
+    "foreignNamespace": "Aus dem Namespace \"{{namespace}}\""
   }
 }

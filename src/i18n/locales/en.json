@@ -44,6 +44,7 @@
     "noProperties": "No properties",
     "group": "Group",
     "expandGroup": "Expand group",
-    "collapseGroup": "Collapse group"
+    "collapseGroup": "Collapse group",
+    "foreignNamespace": "From the \"{{namespace}}\" namespace"
   }
 }

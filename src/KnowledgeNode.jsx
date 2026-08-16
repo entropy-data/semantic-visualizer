@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
+import NamespaceBadge from './NamespaceBadge';
 
 const ACCENT_COLORS = {
   entity: '#3b82f6',    // blue-500
@@ -46,6 +47,9 @@ export default function KnowledgeNode({ data, type }) {
   const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
   const bgColor = BG_COLORS[type] || BG_COLORS.entity;
   const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
+  // A dashed outline carries the "borrowed from another namespace" reading at zoom levels where
+  // the badge text is already too small to read.
+  const foreignNamespace = data.foreignNamespace;
 
   return (
     <div style={{
@@ -55,7 +59,7 @@ export default function KnowledgeNode({ data, type }) {
       padding: '8px 14px',
       borderRadius: 20,
       background: dimmed ? '#f8fafc' : bgColor,
-      border: `2px solid ${dimmed ? '#e2e8f0' : accentColor}`,
+      border: `2px ${foreignNamespace ? 'dashed' : 'solid'} ${dimmed ? '#e2e8f0' : accentColor}`,
       cursor: data.link ? 'pointer' : 'default',
       boxShadow: data.selected
         ? `0 0 0 3px #ffffff, 0 0 0 5px ${accentColor}, 0 0 16px ${accentColor}66`
@@ -82,6 +86,7 @@ export default function KnowledgeNode({ data, type }) {
       }}>
         {data.label}
       </span>
+      <NamespaceBadge namespace={foreignNamespace} dimmed={dimmed} />
     </div>
   );
 }

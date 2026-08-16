@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import NamespaceBadge from './NamespaceBadge';
 
 const ACCENT_COLORS = {
   entity: '#3b82f6',
@@ -78,7 +79,7 @@ export default function DetailPanel({
 
   const type = node.type || 'entity';
   const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
-  const { label, description, link } = node.data;
+  const { label, description, link, foreignNamespace } = node.data;
   const isGroup = GROUP_TYPES.has(type);
 
   return (
@@ -108,14 +109,21 @@ export default function DetailPanel({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: 11,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              color: accentColor,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
               marginBottom: 4,
             }}>
-              {t(TYPE_LABELS[type] || 'detail.type.entity')}
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: accentColor,
+              }}>
+                {t(TYPE_LABELS[type] || 'detail.type.entity')}
+              </span>
+              <NamespaceBadge namespace={foreignNamespace} size="large" />
             </div>
             {link ? (
               <a

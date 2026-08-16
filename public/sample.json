@@ -37,10 +37,23 @@
           { "name": "period", "type": "string" }
         ]
       }
+    },
+    {
+      "id": "4",
+      "type": "entity",
+      "data": {
+        "label": "Product",
+        "link": "#",
+        "foreignNamespace": "catalog",
+        "properties": [
+          { "name": "product_id", "type": "string", "primaryKey": true }
+        ]
+      }
     }
   ],
   "edges": [
     { "id": "e1", "source": "1", "target": "2", "label": "places", "type": "relatedTo" },
-    { "id": "e2", "source": "2", "target": "3", "label": "measures", "type": "relatedTo" }
+    { "id": "e2", "source": "2", "target": "3", "label": "measures", "type": "relatedTo" },
+    { "id": "e3", "source": "2", "target": "4", "label": "orderedProduct", "type": "relatedTo" }
   ]
 }

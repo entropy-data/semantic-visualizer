@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, Position } from '@xyflow/react';
+import NamespaceBadge from './NamespaceBadge';
 
 const MAX_VISIBLE_PROPERTIES = 8;
 
@@ -82,7 +83,7 @@ export default function EntityNode({ data, type }) {
 
       {/* Node container */}
       <div style={{
-        border: '3px solid #E9EEF4',
+        border: `3px ${data.foreignNamespace ? 'dashed' : 'solid'} #E9EEF4`,
         borderTop: 'none',
         borderRadius: '0 0 6px 6px',
         overflow: 'hidden',
@@ -106,6 +107,7 @@ export default function EntityNode({ data, type }) {
           }}>
             {data.label}
           </span>
+          <NamespaceBadge namespace={data.foreignNamespace} />
         </div>
 
         {/* Body */}
