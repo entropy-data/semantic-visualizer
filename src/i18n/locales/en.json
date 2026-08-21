@@ -20,6 +20,13 @@
     "erd": {
       "label": "Show as Entity-Relationship-Diagram",
       "title": "Show as Entity-Relationship Diagram — render properties inside concept and metric nodes"
+    },
+    "namespaces": {
+      "label": "Other namespaces",
+      "title": "Show or hide the concepts that come from other namespaces",
+      "summary": "{{shown}} of {{total}} shown",
+      "showAll": "Show all",
+      "hideAll": "Hide all"
     }
   },
   "detail": {

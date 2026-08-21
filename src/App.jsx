@@ -18,7 +18,9 @@ import EntityNode from './EntityNode';
 import GroupNode from './GroupNode';
 import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
+import NamespaceFilter from './NamespaceFilter';
 import { GroupActionsContext } from './GroupActionsContext';
+import { toggleBtnStyle } from './toolbarStyles';
 import { zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon } from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
 
@@ -633,21 +635,9 @@ function applyCollapseTransform({ nodes, edges }, collapsedSet) {
   return { nodes: filteredNodes, edges: finalEdges };
 }
 
-// Toggle button style helper
-const toggleBtnStyle = (active) => ({
-  borderRadius: 4,
-  background: active ? '#eef2ff' : '#fff',
-  padding: '4px 8px',
-  fontSize: 12,
-  fontWeight: 500,
-  color: active ? '#4f46e5' : '#374151',
-  boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
-  border: `1px solid ${active ? '#a5b4fc' : '#d1d5db'}`,
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-});
+// Past this many foreign-namespace concepts the diagram is more borrowed than its own, so they
+// all start hidden and the namespace dropdown becomes the way back in.
+const FOREIGN_NAMESPACE_LIMIT = 10;
 
 // Enlarge/shrink button
 function EnlargeButton({ customHeight, containerRef }) {
@@ -705,6 +695,42 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
   const [collapsedGroups, setCollapsedGroups] = useState(
     () => new Set(initialToggles?.collapsedGroups || []),
   );
+  // Concepts borrowed from other namespaces, counted per namespace so the dropdown can say
+  // how much each one contributes before the user decides to bring it back.
+  const foreignNamespaces = useMemo(() => {
+    const counts = new Map();
+    graphData.nodes.forEach((n) => {
+      const ns = n.data?.foreignNamespace;
+      if (!ns) return;
+      counts.set(ns, (counts.get(ns) || 0) + 1);
+    });
+    return Array.from(counts, ([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [graphData]);
+  const [hiddenNamespaces, setHiddenNamespaces] = useState(() => {
+    if (initialToggles?.hiddenNamespaces) return new Set(initialToggles.hiddenNamespaces);
+    const total = foreignNamespaces.reduce((sum, ns) => sum + ns.count, 0);
+    return total > FOREIGN_NAMESPACE_LIMIT
+      ? new Set(foreignNamespaces.map((ns) => ns.name))
+      : new Set();
+  });
+  // Reframe after the node set changes, the way the other toolbar toggles do.
+  const refit = useCallback(() => {
+    setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+  }, [fitView]);
+  const toggleNamespace = useCallback((name) => {
+    setHiddenNamespaces((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+    refit();
+  }, [refit]);
+  const setAllNamespaces = useCallback((mode) => {
+    setHiddenNamespaces(mode === 'hide' ? new Set(foreignNamespaces.map((ns) => ns.name)) : new Set());
+    refit();
+  }, [foreignNamespaces, refit]);
   // Bumped by the relayout button — included in baseLayouted deps to force a
   // fresh force-sim run with different initial positions.
   const [layoutSeed, setLayoutSeed] = useState(0);
@@ -787,8 +813,9 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
       showProperties,
       showGroups,
       collapsedGroups: Array.from(collapsedGroups),
+      hiddenNamespaces: Array.from(hiddenNamespaces),
     });
-  }, [storageKey, showProperties, showGroups, collapsedGroups]);
+  }, [storageKey, showProperties, showGroups, collapsedGroups, hiddenNamespaces]);
 
   const onNodeDragStop = useCallback(() => {
     if (isFiltered) return;
@@ -811,10 +838,20 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
 
   const layouted = useMemo(() => {
     let sourceData = graphData;
-    if (showProperties && !isHierarchy) {
-      const filteredNodes = graphData.nodes.filter((n) => n.type !== 'shared_property');
+    // Drop hidden foreign concepts (and the edges reaching them) before layout, so the
+    // remaining concepts get the whole canvas instead of the gaps left behind.
+    if (hiddenNamespaces.size > 0) {
+      const filteredNodes = sourceData.nodes.filter(
+        (n) => !(n.data?.foreignNamespace && hiddenNamespaces.has(n.data.foreignNamespace)),
+      );
       const keepIds = new Set(filteredNodes.map((n) => n.id));
-      const filteredEdges = graphData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
+      const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
+      sourceData = { nodes: filteredNodes, edges: filteredEdges };
+    }
+    if (showProperties && !isHierarchy) {
+      const filteredNodes = sourceData.nodes.filter((n) => n.type !== 'shared_property');
+      const keepIds = new Set(filteredNodes.map((n) => n.id));
+      const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
       sourceData = { nodes: filteredNodes, edges: filteredEdges };
     }
     if (!groupsActive) {
@@ -834,12 +871,19 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
     if (isHierarchy) return treeLayout(rawNodes, rawEdges);
     if (groupsActive) return layoutWithGroups(rawNodes, rawEdges, { entityMode: showProperties, seed: layoutSeed });
     return layoutElements(rawNodes, rawEdges, { entityMode: showProperties, seed: layoutSeed });
-  }, [graphData, showProperties, isHierarchy, groupsActive, collapsedGroups, layoutSeed]);
+  }, [graphData, showProperties, isHierarchy, groupsActive, collapsedGroups, layoutSeed, hiddenNamespaces]);
 
   const adjacency = useMemo(
     () => buildAdjacency(layouted.edges),
     [layouted.edges],
   );
+
+  // Hiding a namespace can take the inspected concept off the canvas — close the panel with it.
+  useEffect(() => {
+    if (selectedNode && !layouted.nodes.some((n) => n.id === selectedNode.id)) {
+      setSelectedNode(null);
+    }
+  }, [layouted.nodes, selectedNode]);
 
   // Apply highlight/dim based on selected node, falling back to search context
   // when nothing is selected. Server tags non-match leaves with searchMatch=false
@@ -1077,6 +1121,14 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
               >
                 {t('toolbar.erd.label')}
               </button>
+            )}
+            {foreignNamespaces.length > 0 && (
+              <NamespaceFilter
+                namespaces={foreignNamespaces}
+                hidden={hiddenNamespaces}
+                onToggle={toggleNamespace}
+                onSetAll={setAllNamespaces}
+              />
             )}
             <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
           </div>

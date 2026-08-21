@@ -20,6 +20,13 @@
     "erd": {
       "label": "Als Entity-Relationship-Diagramm anzeigen",
       "title": "Als Entity-Relationship-Diagramm anzeigen — Eigenschaften innerhalb der Konzept- und Metrik-Knoten darstellen"
+    },
+    "namespaces": {
+      "label": "Andere Namespaces",
+      "title": "Konzepte aus anderen Namespaces ein- oder ausblenden",
+      "summary": "{{shown}} von {{total}} sichtbar",
+      "showAll": "Alle anzeigen",
+      "hideAll": "Alle ausblenden"
     }
   },
   "detail": {
