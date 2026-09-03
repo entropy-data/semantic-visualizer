@@ -52,7 +52,6 @@
     "expandThisGroup": "Expand this group",
     "collapseThisGroup": "Collapse this group",
     "diff": {
-      "heading": "Proposed change",
       "op": {
         "add": "Added",
         "modify": "Changed",
@@ -76,7 +75,7 @@
       "before": "Now",
       "after": "Proposed",
       "unset": "not set",
-      "related": "Changed relationships"
+      "base": "Was"
     },
     "consumers": {
       "heading": "Breaks on removal",
@@ -98,12 +97,7 @@
       "unresolvable": "Cannot be checked again — no repository, path and commit"
     },
     "propertiesChanged": ", {{count}} changed",
-    "relationshipChanges": "Relationships",
-    "op": {
-      "add": "adds",
-      "remove": "removes",
-      "modify": "changes"
-    }
+    "shared": "shared"
   },
   "node": {
     "noProperties": "No properties",
@@ -113,33 +107,5 @@
     "propertiesChanged_one": "{{count}} property changed",
     "propertiesChanged_other": "{{count}} properties changed",
     "foreignNamespace": "From the \"{{namespace}}\" namespace"
-  },
-  "diff": {
-    "base": "Was"
-  },
-  "review": {
-    "frozenByConflict": "conflict must be resolved first",
-    "conflict": {
-      "target": "the namespace",
-      "by": "by",
-      "bothChanged": "Also changed in {{target}}",
-      "changedHereRemovedThere": "Removed from {{target}}",
-      "removedHereChangedThere": "Changed in {{target}} after this proposal removed it",
-      "bothAdded": "Also added in {{target}}, with different content"
-    },
-    "decision": {
-      "accepted": "Accepted",
-      "rejected": "Rejected"
-    },
-    "summary": {
-      "accepted": "{{count}} accepted",
-      "rejected": "{{count}} rejected"
-    },
-    "willChange": "{{count}} already decided",
-    "impact": {
-      "structural": "Structural",
-      "descriptive": "Descriptive",
-      "cosmetic": "Cosmetic"
-    }
   }
 }

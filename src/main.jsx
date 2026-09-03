@@ -26,6 +26,7 @@ function initElement(container) {
   const height = container.dataset.height || '400px';
   const layout = container.dataset.layout || 'force';
   const showMiniMap = container.dataset.showMinimap === 'true';
+  const changesOnly = container.dataset.changesOnly === 'true';
 
   if (!jsonUrl) return;
 
@@ -41,7 +42,8 @@ function initElement(container) {
       createRoot(container).render(
         <I18nextProvider i18n={i18n}>
           <ReactFlowProvider>
-            <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} showMiniMap={showMiniMap} />
+            <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)}
+                 showMiniMap={showMiniMap} changesOnly={changesOnly} />
           </ReactFlowProvider>
         </I18nextProvider>
       );
@@ -80,6 +82,9 @@ document.addEventListener('htmx:load', mountAll);
  *                                             element rather than two
  * @param {string}   [options.locale]
  * @param {string}   [options.height]
+ * @returns {{ update: (next: object) => void } | null} `update` merges `graphData`, `focus`,
+ *          `changesOnly` and `onSelect` into the options and re-renders; container, height, locale
+ *          and layout are fixed at mount
  */
 export function init(options) {
   const container = typeof options.container === 'string'
@@ -97,17 +102,18 @@ export function init(options) {
   if (options.locale) i18n.changeLanguage(options.locale);
 
   const root = createRoot(container);
+  let current = { ...options };
   const render = () => root.render(
     <I18nextProvider i18n={i18n}>
       <ReactFlowProvider>
         <App
-          graphData={options.graphData}
-          changesOnly={options.changesOnly}
-          focus={options.focus}
-          onSelect={options.onSelect}
+          graphData={current.graphData}
+          changesOnly={current.changesOnly}
+          focus={current.focus}
+          onSelect={current.onSelect}
           customHeight={height}
           layout={options.layout || 'force'}
-          storageKey={options.storageKey || storageKeyFor(options.container)}
+          storageKey={options.storageKey || storageKeyFor(typeof options.container === 'string' ? options.container : container.id)}
           showMiniMap={options.showMiniMap === true}
         />
       </ReactFlowProvider>
@@ -115,5 +121,10 @@ export function init(options) {
   );
 
   render();
-  return { update: render };
+  return {
+    update: (next) => {
+      current = { ...current, ...next };
+      render();
+    },
+  };
 }

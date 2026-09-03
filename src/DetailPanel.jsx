@@ -14,9 +14,9 @@ const IMPACT_COLORS = {
 /**
  * Half the canvas. A change is read here and merely located out there, so the panel is a working
  * surface rather than a slot beside the picture — and being a share of the width rather than a
- * pixel count, it stays that on any screen. Published so the canvas knows what it is covering.
+ * pixel count, it stays that on any screen.
  */
-export const DETAIL_PANEL_SHARE = 0.5;
+const DETAIL_PANEL_SHARE = 0.5;
 
 // A column beside the canvas rather than over it. Opening it narrows the graph instead of hiding the
 // part of it the reader just clicked, which is what the panning and the toolbar offset existed to
@@ -31,11 +31,7 @@ const panelStyle = {
   overflow: 'hidden',
 };
 
-/**
- * One entry when several are selected. The panel itself scrolls, so a stacked body flows rather than
- * claiming the height, and a rule separates it from the next.
- */
-/** A body inside the stack flows to its full height; the panel around it is what scrolls. */
+/** A body inside a stack flows to its full height; the panel around it is what scrolls. */
 const scrollerStyle = (stacked, extra = {}) => (stacked
   ? { display: 'flex', flexDirection: 'column', ...extra }
   : { flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', ...extra });
@@ -46,24 +42,6 @@ const stackedBodyStyle = {
   flexShrink: 0,
   borderBottom: '1px solid #e5e7eb',
 };
-
-const footerStyle = {
-  borderTop: '1px solid #e5e7eb',
-  padding: '12px 16px',
-  flexShrink: 0,
-  background: '#fff',
-};
-
-const decisionButtonStyle = (color) => ({
-  flex: 1,
-  border: `1px solid ${color}`,
-  color,
-  background: '#fff',
-  borderRadius: 6,
-  padding: '5px 10px',
-  fontSize: 12,
-  cursor: 'pointer',
-});
 
 const closeButtonStyle = {
   background: 'none',
@@ -392,56 +370,6 @@ function EdgePanel({ edge, graphData, onClose, stacked }) {
  * in a document somewhere else. An element changed with nothing cited is called out: absence of
  * evidence is the thing worth noticing, and it is invisible unless stated.
  */
-/**
- * What the proposal does to this concept's relationships.
- *
- * A relationship is a change in its own right and can be the only one a card carries — connecting an
- * existing property to a concept adds no field to either. Nothing rendered them, so such a card read
- * as "Approving this request applies the following" followed by nothing at all.
- */
-function RelationshipChangesSection({ relationships }) {
-  const { t } = useTranslation();
-  if (!relationships || relationships.length === 0) return null;
-  const tone = { add: '#15803d', remove: '#b91c1c', modify: '#b45309' };
-  return (
-    <div>
-      <div style={sectionHeaderStyle}>
-        {t('detail.relationshipChanges', 'Relationships')} ({relationships.length})
-      </div>
-      {relationships.map((relationship) => (
-        <div key={relationship.externalId} style={{ padding: '8px 16px', borderBottom: '1px solid #f3f4f6' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-              color: tone[relationship.op] || '#6b7280', flexShrink: 0,
-            }}>
-              {t('detail.op.' + relationship.op, relationship.op)}
-            </span>
-            {/* "Customer → marketing_consent_at" rather than the id that encodes it. The stored id is
-                machine-made, and reading it is not the reviewer's job. */}
-            <span style={{ fontSize: 12.5, color: '#374151', overflowWrap: 'anywhere' }}>
-              {relationship.from && relationship.to
-                ? `${relationship.from} → ${relationship.to}`
-                : relationship.name || relationship.externalId}
-            </span>
-          </div>
-          {relationship.fields?.map((field) => (
-            <div key={field.field} style={{ marginTop: 4 }}>
-              <div style={{
-                fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '0.04em', color: '#6b7280',
-              }}>
-                {field.field}
-              </div>
-              <FieldDiff field={field.field} before={field.before} after={field.after} base={field.base} />
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function EvidenceSection({ evidence, missing }) {
   const { t } = useTranslation();
   const items = evidence || [];
@@ -598,11 +526,8 @@ function ConsumersSection({ consumers }) {
 }
 
 /**
- * The changed relationships hanging off an otherwise untouched concept.
- *
- * Without this a reviewer hits a dead end: the concept is drawn as involved — it survives the
- * changes-only filter, it sits at the end of a coloured edge — but its own panel has nothing to do
- * with the request, which reads as a bug rather than as "the change is on the line, not the box".
+ * What the proposal does to this element: the operation, how consequential it is, and each field
+ * that moves, rendered by the field's shape rather than as before/after prose.
  */
 function DiffSection({ detail }) {
   const { t } = useTranslation();
@@ -932,7 +857,7 @@ function ProseDiff({ before, after, base }) {
       {/* The version the author wrote against, shown only where the target has moved away from it.
           Without it a conflict reads as an ordinary change that was refused for no reason. */}
       {base !== undefined && base !== null && (
-        <ProseColumn label={t('detail.diff.base', 'Was')} value={base} color="#6b7280" />
+        <ProseColumn label={t('detail.diff.base')} value={base} color="#6b7280" />
       )}
       <ProseColumn label={t('detail.diff.before')} value={before} color="#dc2626" strike />
       <ProseColumn label={t('detail.diff.after')} value={after} color="#16a34a" />
@@ -1211,7 +1136,7 @@ function PropertySection({ title, properties, count, inherited, changesOnly }) {
                 fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
                 color: '#6366f1', border: '1px solid #c7d2fe', borderRadius: 3, padding: '0 4px',
               }}>
-                {t('detail.shared', 'shared')}
+                {t('detail.shared')}
               </span>
             )}
             {prop.primaryKey && <KeyIcon />}

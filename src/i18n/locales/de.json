@@ -52,7 +52,6 @@
     "expandThisGroup": "Diese Gruppe aufklappen",
     "collapseThisGroup": "Diese Gruppe einklappen",
     "diff": {
-      "heading": "Vorgeschlagene Änderung",
       "op": {
         "add": "Hinzugefügt",
         "modify": "Geändert",
@@ -76,7 +75,7 @@
       "before": "Aktuell",
       "after": "Vorgeschlagen",
       "unset": "nicht gesetzt",
-      "related": "Geänderte Beziehungen"
+      "base": "Vorher"
     },
     "consumers": {
       "heading": "Bricht beim Entfernen",
@@ -98,12 +97,7 @@
       "unresolvable": "Nicht erneut prüfbar — kein Repository, Pfad und Commit"
     },
     "propertiesChanged": ", {{count}} geändert",
-    "relationshipChanges": "Beziehungen",
-    "op": {
-      "add": "fügt hinzu",
-      "remove": "entfernt",
-      "modify": "ändert"
-    }
+    "shared": "geteilt"
   },
   "node": {
     "noProperties": "Keine Eigenschaften",
@@ -113,33 +107,5 @@
     "propertiesChanged_one": "{{count}} Eigenschaft geändert",
     "propertiesChanged_other": "{{count}} Eigenschaften geändert",
     "foreignNamespace": "Aus dem Namespace \"{{namespace}}\""
-  },
-  "diff": {
-    "base": "Vorher"
-  },
-  "review": {
-    "frozenByConflict": "Konflikt muss zuerst gelöst werden",
-    "conflict": {
-      "target": "dem Namespace",
-      "by": "durch",
-      "bothChanged": "Ebenfalls in {{target}} geändert",
-      "changedHereRemovedThere": "In {{target}} entfernt",
-      "removedHereChangedThere": "In {{target}} geändert, nachdem dieses Proposal es entfernt hat",
-      "bothAdded": "Ebenfalls in {{target}} hinzugefügt, mit anderem Inhalt"
-    },
-    "decision": {
-      "accepted": "Angenommen",
-      "rejected": "Abgelehnt"
-    },
-    "summary": {
-      "accepted": "{{count}} angenommen",
-      "rejected": "{{count}} abgelehnt"
-    },
-    "willChange": "{{count}} bereits entschieden",
-    "impact": {
-      "structural": "Strukturell",
-      "descriptive": "Beschreibend",
-      "cosmetic": "Kosmetisch"
-    }
   }
 }

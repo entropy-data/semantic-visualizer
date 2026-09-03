@@ -97,7 +97,10 @@ function toReactFlowElements(graphData) {
       target: e.target,
       label: e.label,
       type: 'floating',
-      data: { label: e.label, parallel: edgeParallelData[e.id], diff: e.diff, diffDetail: e.diffDetail },
+      data: {
+        label: e.label, parallel: edgeParallelData[e.id], externalId: e.externalId,
+        diff: e.diff, diffDetail: e.diffDetail, evidence: e.evidence, evidenceMissing: e.evidenceMissing,
+      },
       style: {
         stroke,
         strokeWidth: diff ? 2.5 : 1.5,
@@ -719,7 +722,7 @@ function EnlargeButton({ customHeight, containerRef }) {
 }
 
 export default function App({
-  graphData: sourceGraphData,
+  graphData,
   customHeight,
   layout,
   storageKey,
@@ -740,10 +743,6 @@ export default function App({
   // panel here would be a second account of one thing. Set for the element the host focuses on
   // arrival, too — otherwise every page load opens a panel nobody asked for.
   const [panelClaimed, setPanelClaimed] = useState(true);
-  // The payload arrives already saying what the proposal does to each element — marks included. It
-  // used to be annotated here from a change list the host passed in, which meant only a client
-  // holding that list could read the picture; the server settles it now, for every reader.
-  const graphData = sourceGraphData;
   const [selectedEdge, setSelectedEdge] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
   // (which lives inside an entity node's property list) wouldn't be visible.
@@ -762,10 +761,12 @@ export default function App({
     [graphData],
   );
   const [showGroups, setShowGroups] = useState(initialToggles?.showGroups ?? false);
-  // A review opens on what is being reviewed. The whole namespace is the context you reach for once
-  // the change stops making sense on its own, not the thing you start by scrolling past. Inert when
-  // there is no diff, so a plain graph is unaffected.
-  const [changesOnly, setChangesOnly] = useState(changesOnlyProp ?? true);
+  // Off unless the host asks: a review page opens on what is being reviewed, but an embed that merely
+  // renders a branch's graph should show the whole picture. Inert when there is no diff either way.
+  const [changesOnly, setChangesOnly] = useState(changesOnlyProp ?? false);
+  useEffect(() => {
+    if (changesOnlyProp !== undefined) setChangesOnly(changesOnlyProp);
+  }, [changesOnlyProp]);
   const [collapsedGroups, setCollapsedGroups] = useState(
     () => new Set(initialToggles?.collapsedGroups || []),
   );

@@ -1,1 +1,116 @@
-{"nodes": [{"id": "customer", "type": "entity", "data": {"label": "Customer", "properties": [{"name": "Customer Email", "externalId": "customer-email", "type": "string", "shared": true, "description": "The email address of a customer."}, {"name": "loyalty_tier", "externalId": "loyalty-tier", "type": "string", "description": "Loyalty program segment assigned based on rolling 12-month spend."}], "externalId": "customer"}}, {"id": "invoice", "type": "entity", "data": {"label": "Invoice", "properties": [], "externalId": "invoice"}}, {"id": "shipment", "type": "entity", "data": {"label": "Shipment", "properties": [], "externalId": "shipment"}}, {"id": "customer-email", "type": "knowledge", "data": {"label": "Customer Email", "externalId": "customer-email"}}], "edges": [{"id": "e1", "source": "invoice", "target": "customer", "label": "billed to", "data": {"changeOp": "add"}}, {"id": "e2", "source": "customer", "target": "shipment", "label": "ships to", "data": {"changeOp": "add"}}], "changes": [{"externalId": "", "elementType": "namespace", "name": "main", "op": "modify", "owningTeam": "sales", "fields": [{"field": "description", "before": "The original description.", "after": "What the business means by its own vocabulary."}]}, {"externalId": "invoice", "elementType": "entity", "name": "Invoice", "op": "add", "owningTeam": "finance", "evidence": [{"source": "git"}], "properties": [{"externalId": "invoice-total", "name": "Total"}], "relationships": [{"externalId": "billed-to", "name": "billed to"}]}, {"externalId": "customer", "elementType": "entity", "name": "Customer", "op": "modify", "owningTeam": "sales", "relationships": [{"externalId": "ships-to", "name": "ships to"}], "mergeNotes": ["Accepting this without 'shipment' leaves out 1 relationship."], "properties": [{"externalId": "loyalty-tier", "name": "loyalty_tier", "op": "modify", "fields": [{"field": "description", "before": "Loyalty tier.", "after": "Loyalty program segment assigned based on rolling 12-month spend."}]}]}, {"externalId": "shipment", "elementType": "entity", "name": "Shipment", "op": "add", "owningTeam": "sales"}, {"externalId": "customer-email", "elementType": "shared_property", "name": "Customer Email", "op": "modify", "owningTeam": "sales", "decision": "accepted"}]}
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "entity",
+      "data": {
+        "label": "Customer",
+        "externalId": "customer",
+        "link": "#",
+        "changedPropertyCount": 2,
+        "evidence": [
+          { "quote": "Customers are segmented into loyalty tiers based on rolling 12-month spend.", "label": "docs/glossary.md" }
+        ],
+        "properties": [
+          { "name": "customer_id", "externalId": "customer-id", "type": "string", "primaryKey": true },
+          { "name": "email", "externalId": "customer-email", "type": "string", "shared": true },
+          {
+            "name": "loyalty_tier",
+            "externalId": "loyalty-tier",
+            "type": "string",
+            "diff": "modify",
+            "diffDetail": {
+              "op": "modify",
+              "impact": "descriptive",
+              "fields": [
+                { "field": "description", "before": "Loyalty tier.", "after": "Loyalty program segment assigned based on rolling 12-month spend.", "impact": "descriptive" },
+                { "field": "status", "before": "draft", "after": "active", "impact": "cosmetic" }
+              ]
+            }
+          },
+          { "name": "fax_number", "externalId": "fax-number", "type": "string", "diff": "remove", "diffDetail": { "op": "remove", "impact": "structural", "fields": [] } }
+        ]
+      }
+    },
+    {
+      "id": "2",
+      "type": "entity",
+      "data": {
+        "label": "Order",
+        "externalId": "order",
+        "link": "#",
+        "overlaps": [ { "changeRequestExternalId": "cr-17", "link": "#", "teamName": "Fulfillment" } ],
+        "properties": [
+          { "name": "order_id", "externalId": "order-id", "type": "string", "primaryKey": true },
+          { "name": "order_date", "externalId": "order-date", "type": "date" }
+        ]
+      }
+    },
+    {
+      "id": "3",
+      "type": "entity",
+      "data": {
+        "label": "Invoice",
+        "externalId": "invoice",
+        "link": "#",
+        "diff": "add",
+        "evidenceMissing": true,
+        "diffDetail": {
+          "op": "add",
+          "impact": "structural",
+          "fields": [
+            { "field": "description", "before": null, "after": "A request for payment issued for one or more orders.", "impact": "descriptive" },
+            { "field": "classification", "before": null, "after": { "display": "badge", "label": "Confidential", "color": "red" }, "impact": "structural" }
+          ]
+        },
+        "properties": [
+          { "name": "invoice_id", "externalId": "invoice-id", "type": "string", "primaryKey": true, "diff": "add" },
+          { "name": "total", "externalId": "invoice-total", "type": "decimal", "diff": "add" }
+        ]
+      }
+    },
+    {
+      "id": "4",
+      "type": "metric",
+      "data": {
+        "label": "Revenue",
+        "externalId": "revenue",
+        "link": "#",
+        "diff": "remove",
+        "diffDetail": { "op": "remove", "impact": "structural", "fields": [] },
+        "consumers": {
+          "total": 2,
+          "dataProducts": [ { "label": "Finance KPIs", "link": "#" } ],
+          "relationships": [ { "label": "reports", "namespace": "reporting" } ]
+        },
+        "properties": [ { "name": "amount", "externalId": "revenue-amount", "type": "decimal" } ]
+      }
+    },
+    {
+      "id": "5",
+      "type": "entity",
+      "data": {
+        "label": "Product",
+        "externalId": "product",
+        "link": "#",
+        "foreignNamespace": "catalog",
+        "properties": [ { "name": "product_id", "externalId": "product-id", "type": "string", "primaryKey": true } ]
+      }
+    },
+    {
+      "id": "6",
+      "type": "entity",
+      "data": { "label": "Warehouse", "externalId": "warehouse", "unresolved": true, "removedBy": { "link": "#" }, "properties": [] }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "1", "target": "2", "label": "places", "type": "relatedTo" },
+    { "id": "e2", "source": "2", "target": "4", "label": "measures", "type": "relatedTo", "diff": "remove", "diffDetail": { "op": "remove", "impact": "structural", "fields": [] } },
+    { "id": "e3", "source": "2", "target": "5", "label": "orderedProduct", "type": "relatedTo" },
+    {
+      "id": "e4", "source": "3", "target": "2", "label": "billedFor", "type": "relatedTo", "diff": "add",
+      "diffDetail": { "op": "add", "impact": "structural", "fields": [ { "field": "description", "before": null, "after": "The orders an invoice settles.", "impact": "descriptive" } ] }
+    },
+    { "id": "e5", "source": "2", "target": "6", "label": "shipsFrom", "type": "relatedTo", "diff": "add", "diffDetail": { "op": "add", "impact": "structural", "fields": [] } }
+  ]
+}
