@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
+import { useTranslation } from 'react-i18next';
 import { DIFF_STYLES } from './diffStyles';
 import NamespaceBadge from './NamespaceBadge';
 
@@ -45,6 +46,7 @@ const TYPE_ICONS = {
 const handleStyle = { visibility: 'hidden', width: 6, height: 6 };
 
 export default function KnowledgeNode({ data, type }) {
+  const { t } = useTranslation();
   const dimmed = data.dimmed;
   const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
   const bgColor = BG_COLORS[type] || BG_COLORS.entity;
@@ -83,14 +85,35 @@ export default function KnowledgeNode({ data, type }) {
       <Handle type="target" position={Position.Left} id="left" style={handleStyle} />
       <Handle type="source" position={Position.Right} id="right" style={handleStyle} />
 
-      {diff && (
-        <span style={{
-          flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: 16, height: 16, borderRadius: 8,
-          background: diff.color, color: '#fff',
-          font: '700 11px/1 ui-sans-serif, system-ui, sans-serif',
-        }}>{diff.symbol}</span>
+      <span style={{ flexShrink: 0, display: 'flex' }}>{icon}</span>
+      <span style={{
+        fontWeight: 600,
+        fontSize: 13,
+        color: dimmed ? '#94a3b8' : '#1e293b',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {data.label}
+      </span>
+      <NamespaceBadge namespace={foreignNamespace} dimmed={dimmed} />
+      {/* What a change request does to this concept, as a word after the name in the diff colour.
+          A concept untouched itself but with edited properties reads as edited too: without that
+          the node looks untouched and the request reads as empty. */}
+      {(diff || data.changedPropertyCount > 0) && (
+        <span
+          title={diff ? undefined : t('node.propertiesChanged', { count: data.changedPropertyCount })}
+          style={{
+            flexShrink: 0, marginLeft: 2,
+            color: (diff || DIFF_STYLES.modify).color,
+            font: '700 10px/1.4 ui-sans-serif, system-ui, sans-serif',
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}
+        >
+          {t(`node.diff.${diff ? data.diff : 'modify'}`)}
+        </span>
       )}
+      {/* Warnings after the name, on the right with the diff word, so the left of a pill is always
+          its icon and its name. */}
       {/* Named by a relationship but present nowhere. Marked rather than hidden: a change request
           pointing at a concept that does not exist cannot be applied, and silently dropping the edge
           would show the reviewer an empty diff. */}
@@ -104,36 +127,6 @@ export default function KnowledgeNode({ data, type }) {
           }}
         >
           missing
-        </span>
-      )}
-      <NamespaceBadge namespace={foreignNamespace} dimmed={dimmed} />
-      {/* Only its properties changed, so the concept itself carries no diff mark. Without this the
-          node looks untouched and the change request reads as empty. */}
-      {!diff && data.changedPropertyCount > 0 && (
-        <span
-          title={`${data.changedPropertyCount} of its properties change`}
-          style={{
-            flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
-            background: '#fff7ed', color: '#c2410c', border: '1px solid #fdba74',
-            font: '700 10px/1 ui-sans-serif, system-ui, sans-serif',
-          }}
-        >
-          {data.changedPropertyCount}
-        </span>
-      )}
-      {/* Changed, but citing nothing. Marked on the node because a reviewer scanning a large
-          proposal needs to see which parts are unsupported without opening each one. */}
-      {data.evidenceMissing && (
-        <span
-          title="This change cites no source"
-          style={{
-            flexShrink: 0, padding: '1px 5px', borderRadius: 8,
-            background: '#fef3c7', color: '#92400e', border: '1px dashed #fcd34d',
-            font: '700 10px/1.4 ui-sans-serif, system-ui, sans-serif',
-          }}
-        >
-          ?
         </span>
       )}
       {/* Another pending request edits this same element. Indigo rather than the diff or impact
@@ -170,17 +163,6 @@ export default function KnowledgeNode({ data, type }) {
           {data.consumers.total}
         </span>
       )}
-      <span style={{ flexShrink: 0, display: 'flex' }}>{icon}</span>
-      <span style={{
-        fontWeight: 600,
-        fontSize: 13,
-        color: dimmed ? '#94a3b8' : '#1e293b',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
-        {data.label}
-      </span>
-      <NamespaceBadge namespace={foreignNamespace} dimmed={dimmed} />
     </div>
   );
 }

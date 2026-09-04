@@ -71,7 +71,7 @@ export default function EntityNode({ data, type }) {
   // graph, where rows are unreadable until you zoom in.
   const changedProperties = data.changedPropertyCount || 0;
   const ring = diff || (changedProperties > 0 ? DIFF_STYLES.modify : null);
-  const ringLabel = diff ? diff.label : t('node.propertiesChanged', { count: changedProperties });
+  const ringLabel = diff ? t(`node.diff.${data.diff}`) : t('node.propertiesChanged', { count: changedProperties });
 
   return (
     <div style={{
