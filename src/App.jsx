@@ -86,7 +86,7 @@ function toReactFlowElements(graphData) {
   });
 
   const edges = graphData.edges.map((e) => {
-    // A relationship the change request touches is a change in its own right, and is listed as one
+    // A relationship the branch touches is a change in its own right, and is listed as one
     // in the proposed-changes list — so it has to be legible in the graph too, not just implied by
     // the concepts it happens to connect.
     const diff = DIFF_STYLES[e.diff];
@@ -931,7 +931,7 @@ export default function App({
       const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
       sourceData = { nodes: filteredNodes, edges: filteredEdges };
     }
-    // Hide what the change request leaves alone — but keep whatever the changed concepts connect to.
+    // Hide what the branch leaves alone — but keep whatever the changed concepts connect to.
     // A concept shown alone says nothing about whether changing it is safe; its neighbours are what
     // make a removal at a hub look different from a removal at a leaf. Neighbours come through
     // dimmed, the treatment search context already uses.
@@ -1253,7 +1253,7 @@ export default function App({
   }, [selectedNode, onSelect]);
 
   // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
-  // is the only place a reviewer can see what a change request did to one.
+  // is the only place a reader can see what the branch did to one.
   const onEdgeClick = useCallback((_event, edge) => {
     setSelectedNode(null);
     setSelectedEdge((prev) => prev?.id === edge.id ? null : edge);

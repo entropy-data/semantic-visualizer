@@ -62,7 +62,7 @@ export default function EntityNode({ data, type }) {
     setExpanded((v) => !v);
   };
 
-  // How a pending change request would affect this concept. Rendered as a ring and a corner label
+  // How the branch would affect this concept. Rendered as a ring and a corner label
   // rather than by recolouring the node, so the type accent still reads: a reviewer needs to see
   // *what* a concept is at the same time as what happens to it.
   const diff = DIFF_STYLES[data.diff];

@@ -1,4 +1,4 @@
-// How a change request's proposed changes are marked up. Kept out of the node
+// How a branch's changes are marked up. Kept out of the node
 // components because edges carry the same three states and must match them.
 //
 // Deliberately not a recolour of the element itself: colour already encodes

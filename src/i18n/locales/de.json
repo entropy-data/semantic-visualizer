@@ -23,7 +23,7 @@
     },
     "changesOnly": {
       "label": "Nur Änderungen",
-      "title": "Nur die Konzepte und Beziehungen anzeigen, die dieser Change Request betrifft"
+      "title": "Nur die Konzepte und Beziehungen anzeigen, die dieser Branch betrifft"
     },
     "namespaces": {
       "label": "Andere Namespaces",
@@ -84,13 +84,7 @@
       "dataProduct": "Data Products",
       "dataContract": "Data Contracts"
     },
-    "overlap": {
-      "heading": "Wird ebenfalls geändert",
-      "description": "Ein anderer offener Change Request bearbeitet dieses Element ebenfalls. Mit der Freigabe wird der andere auf den neuen Stand übertragen, was meist sauber zusammengeführt wird.",
-      "view": "Anderen Change Request ansehen"
-    },
-    "unresolved": "Dieses Konzept existiert nicht. Eine Beziehung in diesem Change Request zeigt darauf, deshalb kann er so nicht angewendet werden.",
-    "unresolvedRemovedBy": "Change Request ansehen, der es entfernt hat",
+    "unresolved": "Dieses Konzept existiert nicht. Eine Beziehung auf diesem Branch zeigt darauf, deshalb kann der Branch so nicht gemergt werden.",
     "evidence": {
       "heading": "Belege",
       "none": "Diese Änderung zitiert nichts. Sie lässt sich gegen keine Quelle prüfen.",

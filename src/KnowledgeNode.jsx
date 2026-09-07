@@ -96,7 +96,7 @@ export default function KnowledgeNode({ data, type }) {
         {data.label}
       </span>
       <NamespaceBadge namespace={foreignNamespace} dimmed={dimmed} />
-      {/* What a change request does to this concept, as a word after the name in the diff colour.
+      {/* What the branch does to this concept, as a word after the name in the diff colour.
           A concept untouched itself but with edited properties reads as edited too: without that
           the node looks untouched and the request reads as empty. */}
       {(diff || data.changedPropertyCount > 0) && (
@@ -114,7 +114,7 @@ export default function KnowledgeNode({ data, type }) {
       )}
       {/* Warnings after the name, on the right with the diff word, so the left of a pill is always
           its icon and its name. */}
-      {/* Named by a relationship but present nowhere. Marked rather than hidden: a change request
+      {/* Named by a relationship but present nowhere. Marked rather than hidden: a branch
           pointing at a concept that does not exist cannot be applied, and silently dropping the edge
           would show the reviewer an empty diff. */}
       {data.unresolved && (
@@ -127,21 +127,6 @@ export default function KnowledgeNode({ data, type }) {
           }}
         >
           missing
-        </span>
-      )}
-      {/* Another pending request edits this same element. Indigo rather than the diff or impact
-          colours: it is not a property of this change, it is a warning about a different one. */}
-      {data.overlaps?.length > 0 && (
-        <span
-          title={`Also edited by ${data.overlaps.length} other pending change request(s)`}
-          style={{
-            flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            width: 16, height: 16, borderRadius: 8,
-            background: '#e0e7ff', color: '#4338ca', border: '1px solid #a5b4fc',
-            font: '700 10px/1 ui-sans-serif, system-ui, sans-serif',
-          }}
-        >
-          {data.overlaps.length > 1 ? data.overlaps.length : '⇄'}
         </span>
       )}
       {/* How many things break if this removal goes ahead. On the node itself because it is the one

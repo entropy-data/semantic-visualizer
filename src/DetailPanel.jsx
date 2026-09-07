@@ -4,7 +4,7 @@ import { DIFF_STYLES } from './diffStyles';
 import NamespaceBadge from './NamespaceBadge';
 
 // Impact is a separate channel from the diff op: how consequential a change is, independent of
-// whether it adds, changes or removes. Ordered as the review order in the change request list.
+// whether it adds, changes or removes. Ordered as the change list orders them.
 const IMPACT_COLORS = {
   structural: '#dc2626',  // red-600
   descriptive: '#d97706', // amber-600
@@ -235,16 +235,6 @@ export default function DetailPanel({
             lineHeight: 1.5,
           }}>
             {t('detail.unresolved')}
-            {node.data.removedBy && (
-              <div style={{ marginTop: 6 }}>
-                <a
-                  href={node.data.removedBy.link}
-                  style={{ color: '#b91c1c', fontWeight: 700, textDecoration: 'underline' }}
-                >
-                  {t('detail.unresolvedRemovedBy')}
-                </a>
-              </div>
-            )}
           </div>
         )}
 
@@ -297,7 +287,6 @@ export default function DetailPanel({
           <DiffSection detail={node.data.diffDetail} />
           <EntityBody node={node} changesOnly={changesOnly} />
           <EvidenceSection evidence={node.data.evidence} missing={node.data.evidenceMissing} />
-          <OverlapSection overlaps={node.data.overlaps} />
           <ConsumersSection consumers={node.data.consumers} />
         </div>
       )}
@@ -425,41 +414,6 @@ function EvidenceSection({ evidence, missing }) {
                 {t('detail.evidence.unresolvable')}
               </div>
             )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Other pending change requests editing this same element.
- *
- * Overlap is a risk, not a certainty: approving reshapes the others onto the new state and two edits
- * to one concept often merge cleanly. What the reviewer needs is which concept is contested and a way
- * to go and look, which is why this hangs off the element rather than sitting in a banner.
- */
-function OverlapSection({ overlaps }) {
-  const { t } = useTranslation();
-  if (!overlaps || overlaps.length === 0) return null;
-
-  return (
-    <div style={{ borderBottom: '1px solid #e5e7eb', background: '#eef2ff' }}>
-      <div style={{ ...sectionHeaderStyle, background: 'transparent', borderBottom: 'none', color: '#4338ca' }}>
-        {t('detail.overlap.heading')} ({overlaps.length})
-      </div>
-      <div style={{ padding: '0 16px 12px', fontSize: 12.5, color: '#3730a3', lineHeight: 1.5 }}>
-        {t('detail.overlap.description')}
-      </div>
-      <div style={{ padding: '0 16px 12px' }}>
-        {overlaps.map((o) => (
-          <div key={o.changeRequestExternalId} style={{ fontSize: 13, marginTop: 2 }}>
-            <a href={o.link} style={{ color: '#4338ca', fontWeight: 600, textDecoration: 'none' }}
-               onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
-               onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}>
-              {t('detail.overlap.view')}
-            </a>
-            {o.teamName && <span style={{ color: '#4f46e5' }}> · {o.teamName}</span>}
           </div>
         ))}
       </div>

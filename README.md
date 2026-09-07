@@ -85,15 +85,13 @@ mount. `init` returns `null` when the container is not found.
 | `highlight` | boolean? | Search hit; also switches on the entity-relationship view when a property matches |
 | `searchMatch` | boolean? | `false` marks a 1-hop neighbour included only as context |
 | `properties` | Property[] | Rendered as rows in the entity-relationship view and the panel |
-| `diff` | `add` \| `modify` \| `remove`? | What a pending change request does to this element; ring and badge on the node |
+| `diff` | `add` \| `modify` \| `remove`? | What the branch does to this element; ring and badge on the node |
 | `diffDetail` | DiffDetail? | What changed, for the panel |
 | `changedPropertyCount` | number? | How many of its properties carry a diff when the concept itself does not; keeps it in the changes-only view |
 | `evidence` | Evidence[]? | What the change cites |
 | `evidenceMissing` | boolean? | Changed but cites nothing; marked on the node and in the panel |
-| `overlaps` | Overlap[]? | Other pending change requests editing this element |
 | `consumers` | Consumers? | What breaks if a removal goes ahead |
 | `unresolved` | boolean? | Named by a relationship but present nowhere; drawn dashed and red |
-| `removedBy` | `{ link }`? | With `unresolved`: the change request that removed it |
 | `dimmed` | boolean? | Rendered faded. Set by the visualizer for context nodes; accepted as input too |
 
 ### Property (`data.properties[]`)
@@ -145,11 +143,10 @@ decorated as `{ "display": "badge", "label", "color", "icon", "href" }` and is d
 `color` is a palette token (`red`, `orange`, `amber`, `yellow`, `green`, `teal`, `blue`, `indigo`,
 `purple`, `pink`, `gray`), `icon` inline SVG, `href` a link back to the thing named.
 
-### Evidence, Overlap, Consumers
+### Evidence, Consumers
 
 ```json
 "evidence": [ { "quote": "…", "label": "docs/glossary.md", "resolvable": true } ],
-"overlaps": [ { "changeRequestExternalId": "cr-17", "link": "/…", "teamName": "Fulfillment" } ],
 "consumers": {
   "total": 2,
   "relationships": [ { "label": "reports", "namespace": "reporting", "link": "/…" } ],

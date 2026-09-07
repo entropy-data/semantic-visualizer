@@ -23,7 +23,7 @@
     },
     "changesOnly": {
       "label": "Changes only",
-      "title": "Show only the concepts and relationships this change request touches"
+      "title": "Show only the concepts and relationships this branch touches"
     },
     "namespaces": {
       "label": "Other namespaces",
@@ -84,13 +84,7 @@
       "dataProduct": "data products",
       "dataContract": "data contracts"
     },
-    "overlap": {
-      "heading": "Also being changed",
-      "description": "Another pending change request edits this element too. Approving this one reshapes the other onto the new state, which usually merges cleanly.",
-      "view": "View the other change request"
-    },
-    "unresolved": "This concept does not exist. A relationship in this change request points at it, so the request cannot be applied as it stands.",
-    "unresolvedRemovedBy": "See the change request that removed it",
+    "unresolved": "This concept does not exist. A relationship on this branch points at it, so the branch cannot be merged as it stands.",
     "evidence": {
       "heading": "Evidence",
       "none": "This change cites nothing. It cannot be checked against a source.",
