@@ -10,6 +10,16 @@
   <div class="semantic-visualizer"
        data-json-url="/sample.json"
        data-height="600px"></div>
+  <script>
+    // `?sample=review` swaps in the branch-diff fixture, opened on the changes, so the diff UI can be
+    // seen on `npm run dev`. Runs before the module below, which reads the attributes on mount.
+    const sample = new URLSearchParams(location.search).get('sample');
+    if (sample) {
+      const container = document.querySelector('.semantic-visualizer');
+      container.dataset.jsonUrl = `/sample-${sample}.json`;
+      container.dataset.changesOnly = 'true';
+    }
+  </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

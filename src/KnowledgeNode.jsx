@@ -1,5 +1,7 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
+import { useTranslation } from 'react-i18next';
+import { DIFF_STYLES } from './diffStyles';
 import NamespaceBadge from './NamespaceBadge';
 
 const ACCENT_COLORS = {
@@ -40,13 +42,16 @@ const TYPE_ICONS = {
   ),
 };
 
+
 const handleStyle = { visibility: 'hidden', width: 6, height: 6 };
 
 export default function KnowledgeNode({ data, type }) {
+  const { t } = useTranslation();
   const dimmed = data.dimmed;
   const accentColor = ACCENT_COLORS[type] || ACCENT_COLORS.entity;
   const bgColor = BG_COLORS[type] || BG_COLORS.entity;
   const icon = TYPE_ICONS[type] || TYPE_ICONS.entity;
+  const diff = DIFF_STYLES[data.diff];
   // A dashed outline carries the "borrowed from another namespace" reading at zoom levels where
   // the badge text is already too small to read.
   const foreignNamespace = data.foreignNamespace;
@@ -58,13 +63,17 @@ export default function KnowledgeNode({ data, type }) {
       gap: 8,
       padding: '8px 14px',
       borderRadius: 20,
-      background: dimmed ? '#f8fafc' : bgColor,
-      border: `2px ${foreignNamespace ? 'dashed' : 'solid'} ${dimmed ? '#e2e8f0' : accentColor}`,
+      background: dimmed ? '#f8fafc' : (data.unresolved ? '#fef2f2' : (foreignNamespace ? '#f8fafc' : bgColor)),
+      // A concept from another namespace is shown only because something here points at it. Dashed
+      // and desaturated so it never reads as part of this namespace's own model.
+      border: `2px ${(foreignNamespace || data.unresolved) ? 'dashed' : 'solid'} ${dimmed ? '#e2e8f0' : (data.unresolved ? '#dc2626' : (diff ? diff.color : (foreignNamespace ? '#cbd5e1' : accentColor)))}`,
       cursor: data.link ? 'pointer' : 'default',
       boxShadow: data.selected
         ? `0 0 0 3px #ffffff, 0 0 0 5px ${accentColor}, 0 0 16px ${accentColor}66`
         : data.highlight
         ? `0 0 0 3px ${accentColor}40, 0 0 16px ${accentColor}30`
+        : diff
+        ? `0 0 0 3px ${diff.color}33`
         : '0 1px 4px rgba(0,0,0,0.08)',
       whiteSpace: 'nowrap',
       minWidth: 0,
@@ -87,6 +96,58 @@ export default function KnowledgeNode({ data, type }) {
         {data.label}
       </span>
       <NamespaceBadge namespace={foreignNamespace} dimmed={dimmed} />
+      {/* What the branch does to this concept, as a word after the name in the diff colour.
+          A concept untouched itself but with edited properties reads as edited too: without that
+          the node looks untouched and the request reads as empty. */}
+      {(diff || data.changedPropertyCount > 0) && (
+        <span
+          title={diff ? undefined : t('node.propertiesChanged', { count: data.changedPropertyCount })}
+          style={{
+            flexShrink: 0, marginLeft: 2,
+            color: (diff || DIFF_STYLES.modify).color,
+            font: '700 10px/1.4 ui-sans-serif, system-ui, sans-serif',
+            letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}
+        >
+          {t(`node.diff.${diff ? data.diff : 'modify'}`)}
+        </span>
+      )}
+      {/* Warnings after the name, on the right with the diff word, so the left of a pill is always
+          its icon and its name. */}
+      {/* Named by a relationship but present nowhere. Marked rather than hidden: a branch
+          pointing at a concept that does not exist cannot be applied, and silently dropping the edge
+          would show the reviewer an empty diff. */}
+      {data.unresolved && (
+        <span
+          title="This concept does not exist"
+          style={{
+            flexShrink: 0, padding: '1px 6px', borderRadius: 8,
+            background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5',
+            font: '700 10px/1.4 ui-sans-serif, system-ui, sans-serif',
+          }}
+        >
+          missing
+        </span>
+      )}
+      {/* How many things break if this removal goes ahead. On the node itself because it is the one
+          number that decides whether a removal is routine or serious, and a reviewer should not have
+          to open anything to see it. */}
+      {data.consumers?.total > 0 && (
+        <span
+          title={`${data.consumers.total} consumer(s) depend on this`}
+          style={{
+            flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 2,
+            padding: '1px 6px 1px 4px', borderRadius: 8,
+            background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d',
+            font: '700 10px/1.4 ui-sans-serif, system-ui, sans-serif',
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 20 20" fill="#b45309" aria-hidden="true">
+            <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd"/>
+          </svg>
+          {data.consumers.total}
+        </span>
+      )}
     </div>
   );
 }

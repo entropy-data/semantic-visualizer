@@ -45,3 +45,44 @@ export const collapseAllIcon = (
     <path d="m7 4 5 5 5-5" />
   </svg>
 );
+
+// --- Toolbar toggles -----------------------------------------------------------------------------
+//
+// Drawn in the same stroke language as the zoom and fit-view glyphs above, at 24×24 so they sit on
+// the same grid. Each is a state rather than an action, so the button around it carries the pressed
+// styling and a title — a glyph alone cannot say "on".
+
+/** Changes only: a funnel, the ordinary sign for showing a subset. */
+export const changesOnlyIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" style={{ fill: 'none' }}
+       stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3.5 4.5h17l-6.5 7.8v6.9l-4 2.3v-9.2z" />
+  </svg>
+);
+
+/** Groups: nested containers. */
+export const groupsIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" style={{ fill: 'none' }}
+       stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2.75" y="2.75" width="18.5" height="18.5" rx="2.5" />
+    <rect x="6.75" y="6.75" width="6" height="5" rx="1" />
+    <rect x="6.75" y="14" width="10.5" height="3.25" rx="1" />
+  </svg>
+);
+
+/** Entity-relationship view: a table of rows, which is what the concepts become. */
+export const erdIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" style={{ fill: 'none' }}
+       stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3.25" y="3.75" width="17.5" height="16.5" rx="2" />
+    <path d="M3.25 9h17.5M3.25 14.5h17.5M9.5 9v11.25" />
+  </svg>
+);
+
+/** Enlarge: arrows pushing out to the corners. */
+export const enlargeIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" style={{ fill: 'none' }}
+       stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 3.75H3.75V9M15 3.75h5.25V9M15 20.25h5.25V15M9 20.25H3.75V15" />
+  </svg>
+);

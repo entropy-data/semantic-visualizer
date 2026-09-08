@@ -21,6 +21,10 @@
       "label": "Als Entity-Relationship-Diagramm anzeigen",
       "title": "Als Entity-Relationship-Diagramm anzeigen — Eigenschaften innerhalb der Konzept- und Metrik-Knoten darstellen"
     },
+    "changesOnly": {
+      "label": "Nur Änderungen",
+      "title": "Nur die Konzepte und Beziehungen anzeigen, die dieser Branch betrifft"
+    },
     "namespaces": {
       "label": "Andere Namespaces",
       "title": "Konzepte aus anderen Namespaces ein- oder ausblenden",
@@ -42,16 +46,67 @@
       "entity": "Entität",
       "property": "Eigenschaft",
       "metric": "Metrik",
-      "group": "Gruppe"
+      "group": "Gruppe",
+      "relationship": "Beziehung"
     },
     "expandThisGroup": "Diese Gruppe aufklappen",
-    "collapseThisGroup": "Diese Gruppe einklappen"
+    "collapseThisGroup": "Diese Gruppe einklappen",
+    "diff": {
+      "op": {
+        "add": "Hinzugefügt",
+        "modify": "Bearbeitet",
+        "remove": "Entfernt",
+        "conflict": "Konflikt"
+      },
+      "impact": {
+        "structural": "Strukturell",
+        "descriptive": "Beschreibend",
+        "cosmetic": "Kosmetisch"
+      },
+      "impactHint": {
+        "structural": "Ändert die Bedeutung des Modells.",
+        "descriptive": "Ändert die Lesart des Modells, nicht seine Bedeutung.",
+        "cosmetic": "Nur die Formulierung."
+      },
+      "summary": {
+        "add": "Existiert noch nicht. Mit der Freigabe dieses Requests wird es angelegt.",
+        "remove": "Mit der Freigabe dieses Requests wird es gelöscht.",
+        "modify": "Mit der Freigabe dieses Requests wird Folgendes übernommen."
+      },
+      "before": "Aktuell",
+      "after": "Vorgeschlagen",
+      "unset": "nicht gesetzt",
+      "base": "Vorher"
+    },
+    "consumers": {
+      "heading": "Bricht beim Entfernen",
+      "description": "Diese hängen von diesem Konzept ab und entscheiden diese Änderung nicht. Beim Entfernen bleiben ihre Referenzen kaputt.",
+      "relationship": "Beziehungen in anderen Namespaces",
+      "dataProduct": "Data Products",
+      "dataContract": "Data Contracts"
+    },
+    "unresolved": "Dieses Konzept existiert nicht. Eine Beziehung auf diesem Branch zeigt darauf, deshalb kann der Branch so nicht gemergt werden.",
+    "evidence": {
+      "heading": "Belege",
+      "none": "Diese Änderung zitiert nichts. Sie lässt sich gegen keine Quelle prüfen.",
+      "unresolvable": "Nicht erneut prüfbar — kein Repository, Pfad und Commit"
+    },
+    "propertiesChanged": ", {{count}} geändert",
+    "shared": "geteilt"
   },
   "node": {
     "noProperties": "Keine Eigenschaften",
     "group": "Gruppe",
     "expandGroup": "Gruppe aufklappen",
     "collapseGroup": "Gruppe einklappen",
-    "foreignNamespace": "Aus dem Namespace \"{{namespace}}\""
+    "propertiesChanged_one": "{{count}} Eigenschaft geändert",
+    "propertiesChanged_other": "{{count}} Eigenschaften geändert",
+    "foreignNamespace": "Aus dem Namespace \"{{namespace}}\"",
+    "diff": {
+      "add": "hinzugefügt",
+      "modify": "bearbeitet",
+      "remove": "entfernt",
+      "conflict": "Konflikt"
+    }
   }
 }

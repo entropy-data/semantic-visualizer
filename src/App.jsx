@@ -9,6 +9,8 @@ import {
   Panel,
   MarkerType,
   useReactFlow,
+  useStore,
+  useStoreApi,
   useNodesState,
   useEdgesState,
 } from '@xyflow/react';
@@ -20,9 +22,12 @@ import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 import NamespaceFilter from './NamespaceFilter';
 import { GroupActionsContext } from './GroupActionsContext';
-import { toggleBtnStyle } from './toolbarStyles';
-import { zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon } from './controlIcons';
+import {
+  zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon,
+  changesOnlyIcon, groupsIcon, erdIcon, enlargeIcon,
+} from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
+import { DIFF_STYLES } from './diffStyles';
 
 import '@xyflow/react/dist/style.css';
 
@@ -80,27 +85,43 @@ function toReactFlowElements(graphData) {
     edgeParallelData[e.id] = { index: pairAssigned[key]++, total: pairCounts[key] };
   });
 
-  const edges = graphData.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    type: 'floating',
-    data: { label: e.label, parallel: edgeParallelData[e.id] },
-    style: {
-      stroke: '#94a3b8',
-      strokeWidth: 1.5,
-    },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#94a3b8',
-      width: 14,
-      height: 14,
-    },
-    labelStyle: { fontSize: 10, fill: '#64748b', fontWeight: 500 },
-    labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
-    labelBgPadding: [4, 2],
-  }));
+  const edges = graphData.edges.map((e) => {
+    // A relationship the branch touches is a change in its own right, and is listed as one
+    // in the proposed-changes list — so it has to be legible in the graph too, not just implied by
+    // the concepts it happens to connect.
+    const diff = DIFF_STYLES[e.diff];
+    const stroke = diff ? diff.color : '#94a3b8';
+    return {
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      label: e.label,
+      type: 'floating',
+      data: {
+        label: e.label, parallel: edgeParallelData[e.id], externalId: e.externalId,
+        diff: e.diff, diffDetail: e.diffDetail, evidence: e.evidence, evidenceMissing: e.evidenceMissing,
+      },
+      style: {
+        stroke,
+        strokeWidth: diff ? 2.5 : 1.5,
+        // A removed relationship still has both ends in the graph, so it can only be told apart
+        // from a surviving one by how it is drawn.
+        ...(e.diff === 'remove' ? { strokeDasharray: '6 4' } : {}),
+      },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: stroke,
+        width: 14,
+        height: 14,
+      },
+      labelStyle: diff
+        ? { fontSize: 11, fill: stroke, fontWeight: 700 }
+        : { fontSize: 10, fill: '#64748b', fontWeight: 500 },
+      labelBgStyle: { fill: '#fff', fillOpacity: 0.9 },
+      labelBgPadding: [4, 2],
+      zIndex: diff ? 5 : 0,
+    };
+  });
 
   return { nodes, edges };
 }
@@ -635,9 +656,36 @@ function applyCollapseTransform({ nodes, edges }, collapsedSet) {
   return { nodes: filteredNodes, edges: finalEdges };
 }
 
+// Toggle button style helper
+/**
+ * A square icon button, stacked with its siblings down the edge of the canvas.
+ *
+ * Labels cost horizontal room the graph now needs — "Show as Entity-Relationship-Diagram" was wider
+ * than the canvas it sat on once the panels stopped overlapping it. A glyph cannot say "on" by
+ * itself, so the pressed state is carried by the button: filled, tinted and outlined, with the words
+ * still available as a title.
+ */
+const toggleBtnStyle = (active) => ({
+  width: 32,
+  height: 32,
+  borderRadius: 6,
+  background: active ? '#eef2ff' : '#fff',
+  padding: 0,
+  color: active ? '#4f46e5' : '#4b5563',
+  boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)',
+  border: `1px solid ${active ? '#a5b4fc' : '#d1d5db'}`,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
+
 // Past this many foreign-namespace concepts the diagram is more borrowed than its own, so they
 // all start hidden and the namespace dropdown becomes the way back in.
 const FOREIGN_NAMESPACE_LIMIT = 10;
+
+/** Sized here rather than in each glyph so the four stay on one grid. */
+const toolbarIconStyle = { width: 17, height: 17, display: 'block' };
 
 // Enlarge/shrink button
 function EnlargeButton({ customHeight, containerRef }) {
@@ -662,19 +710,40 @@ function EnlargeButton({ customHeight, containerRef }) {
   }, [enlarged, customHeight, fitView, containerRef]);
 
   return (
-    <button onClick={toggle} style={toggleBtnStyle(false)}
-      onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
-      onMouseOut={(e) => e.currentTarget.style.background = '#fff'}>
-      {enlarged ? t('controls.shrink') : t('controls.enlarge')}
+    <button onClick={toggle} style={toggleBtnStyle(enlarged)}
+      title={enlarged ? t('controls.shrink') : t('controls.enlarge')}
+      aria-label={enlarged ? t('controls.shrink') : t('controls.enlarge')}
+      aria-pressed={enlarged}
+      onMouseOver={(e) => { if (!enlarged) e.currentTarget.style.background = '#f9fafb'; }}
+      onMouseOut={(e) => { if (!enlarged) e.currentTarget.style.background = '#fff'; }}>
+      <span style={toolbarIconStyle} aria-hidden="true">{enlargeIcon}</span>
     </button>
   );
 }
 
-export default function App({ graphData, customHeight, layout, storageKey, showMiniMap }) {
+export default function App({
+  graphData,
+  customHeight,
+  layout,
+  storageKey,
+  showMiniMap,
+  changesOnly: changesOnlyProp,
+  focus,
+  onSelect,
+}) {
   const { t } = useTranslation();
-  const { fitView, getNodes, zoomIn, zoomOut } = useReactFlow();
+  const { fitView, getNodes, zoomIn, zoomOut, setCenter, getViewport, getNodesBounds } = useReactFlow();
+  const store = useStoreApi();
   const containerRef = useRef(null);
+  const canvasRef = useRef(null);
+  // React Flow's own measurement, so centring is driven by the number it uses rather than a copy.
+  const flowWidth = useStore((state) => state.width);
   const [selectedNode, setSelectedNode] = useState(null);
+  // Whether the host took the last selection and is showing that element itself, in which case a
+  // panel here would be a second account of one thing. Set for the element the host focuses on
+  // arrival, too — otherwise every page load opens a panel nobody asked for.
+  const [panelClaimed, setPanelClaimed] = useState(true);
+  const [selectedEdge, setSelectedEdge] = useState(null);
   // Default to ERD mode when a property is highlighted — otherwise the highlight
   // (which lives inside an entity node's property list) wouldn't be visible.
   const hasHighlightedProperty = useMemo(
@@ -692,6 +761,12 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
     [graphData],
   );
   const [showGroups, setShowGroups] = useState(initialToggles?.showGroups ?? false);
+  // Off unless the host asks: a review page opens on what is being reviewed, but an embed that merely
+  // renders a branch's graph should show the whole picture. Inert when there is no diff either way.
+  const [changesOnly, setChangesOnly] = useState(changesOnlyProp ?? false);
+  useEffect(() => {
+    if (changesOnlyProp !== undefined) setChangesOnly(changesOnlyProp);
+  }, [changesOnlyProp]);
   const [collapsedGroups, setCollapsedGroups] = useState(
     () => new Set(initialToggles?.collapsedGroups || []),
   );
@@ -736,6 +811,14 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
   const [layoutSeed, setLayoutSeed] = useState(0);
   const isHierarchy = layout === 'tree';
   const groupsActive = hasGroups && showGroups && !isHierarchy;
+  // A request whose only change is to a concept's own property marks no node and no edge — the
+  // property is not either. Without counting it the changes-only toggle disappears on exactly the
+  // request that needs it.
+  const hasDiff = useMemo(
+    () => graphData.nodes.some((n) => n.data?.diff || n.data?.changedPropertyCount > 0) ||
+      graphData.edges.some((e) => e.diff),
+    [graphData],
+  );
   const nodeTypes = showProperties && !isHierarchy ? entityNodeTypes : defaultNodeTypes;
 
   // Toggling produces a fresh Set so memoized consumers (layout, context) invalidate cleanly.
@@ -848,7 +931,41 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
       const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
       sourceData = { nodes: filteredNodes, edges: filteredEdges };
     }
+    // Hide what the branch leaves alone — but keep whatever the changed concepts connect to.
+    // A concept shown alone says nothing about whether changing it is safe; its neighbours are what
+    // make a removal at a hub look different from a removal at a leaf. Neighbours come through
+    // dimmed, the treatment search context already uses.
+    if (changesOnly && hasDiff) {
+      // A concept whose only change is to one of its own properties carries no diff of its own —
+      // the property is not a node, so the change lands on the concept as a count.
+      const changedIds = new Set(
+        sourceData.nodes.filter((n) => n.data?.diff || n.data?.changedPropertyCount > 0).map((n) => n.id),
+      );
+      // A relationship can change between two concepts that are themselves untouched. Both ends
+      // count as changed, or the only thing the request actually did would be filtered away.
+      sourceData.edges.forEach((e) => {
+        if (!e.diff) return;
+        changedIds.add(e.source);
+        changedIds.add(e.target);
+      });
+      const neighbourIds = new Set();
+      sourceData.edges.forEach((e) => {
+        if (changedIds.has(e.source)) neighbourIds.add(e.target);
+        if (changedIds.has(e.target)) neighbourIds.add(e.source);
+      });
+      const filteredNodes = sourceData.nodes
+        .filter((n) => changedIds.has(n.id) || neighbourIds.has(n.id) || n.type === 'group')
+        .map((n) => (changedIds.has(n.id) || n.type === 'group'
+          ? n
+          : { ...n, data: { ...n.data, dimmed: true } }));
+      const keepIds = new Set(filteredNodes.map((n) => n.id));
+      const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
+      sourceData = { nodes: filteredNodes, edges: filteredEdges };
+    }
     if (showProperties && !isHierarchy) {
+      // Filters compose: this reads from whatever the step above produced, not from the original
+      // graph. Reading from graphData discarded the changes-only filter, so turning on the
+      // entity-relationship view silently put every unchanged concept back.
       const filteredNodes = sourceData.nodes.filter((n) => n.type !== 'shared_property');
       const keepIds = new Set(filteredNodes.map((n) => n.id));
       const filteredEdges = sourceData.edges.filter((e) => keepIds.has(e.source) && keepIds.has(e.target));
@@ -871,7 +988,7 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
     if (isHierarchy) return treeLayout(rawNodes, rawEdges);
     if (groupsActive) return layoutWithGroups(rawNodes, rawEdges, { entityMode: showProperties, seed: layoutSeed });
     return layoutElements(rawNodes, rawEdges, { entityMode: showProperties, seed: layoutSeed });
-  }, [graphData, showProperties, isHierarchy, groupsActive, collapsedGroups, layoutSeed, hiddenNamespaces]);
+  }, [graphData, showProperties, isHierarchy, groupsActive, collapsedGroups, layoutSeed, changesOnly, hasDiff, hiddenNamespaces]);
 
   const adjacency = useMemo(
     () => buildAdjacency(layouted.edges),
@@ -892,6 +1009,15 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
   // they're never dimmed by search alone. Click-selection always wins over
   // search dimming so clicking a context node lets the user explore from it.
   const displayNodes = useMemo(() => {
+    // Selecting a relationship reduces the graph to the two concepts it joins — the pair is the
+    // whole subject of the panel.
+    if (selectedEdge) {
+      const ends = new Set([selectedEdge.source, selectedEdge.target]);
+      return layouted.nodes.map((node) => ({
+        ...node,
+        data: { ...node.data, dimmed: !ends.has(node.id), selected: false },
+      }));
+    }
     if (selectedNode) {
       const activeNodes = new Set([selectedNode.id]);
       (adjacency.neighborNodes[selectedNode.id] || new Set()).forEach((id) => activeNodes.add(id));
@@ -917,28 +1043,49 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
       const shouldDim = isContainer || node.data?.searchMatch === false;
       return { ...node, data: { ...node.data, dimmed: shouldDim } };
     });
-  }, [layouted.nodes, selectedNode, adjacency]);
+  }, [layouted.nodes, selectedNode, selectedEdge, adjacency]);
 
   const displayEdges = useMemo(() => {
+    if (selectedEdge) {
+      return layouted.edges.map((edge) => {
+        if (edge.id === selectedEdge.id) {
+          return { ...edge, style: { ...edge.style, strokeWidth: 3.5 }, zIndex: 10 };
+        }
+        return {
+          ...edge,
+          style: { ...edge.style, stroke: '#e2e8f0', strokeWidth: 1 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: '#e2e8f0', width: 14, height: 14 },
+          data: { ...edge.data, dimmed: true },
+          labelStyle: { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
+          labelBgStyle: { fill: '#fff', fillOpacity: 0.5 },
+          zIndex: 0,
+        };
+      });
+    }
     if (selectedNode) {
       const activeEdges = adjacency.neighborEdges[selectedNode.id] || new Set();
       return layouted.edges.map((edge) => {
         const active = activeEdges.has(edge.id);
+        // Selecting a concept must not erase the diff channel — a changed relationship keeps its
+        // own colour and only borrows the selection's emphasis.
+        const diff = DIFF_STYLES[edge.data?.diff];
+        const activeStroke = diff ? diff.color : '#6366f1';
         return {
           ...edge,
           style: {
-            stroke: active ? '#6366f1' : '#e2e8f0',
+            ...edge.style,
+            stroke: active ? activeStroke : '#e2e8f0',
             strokeWidth: active ? 2.5 : 1,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: active ? '#6366f1' : '#e2e8f0',
+            color: active ? activeStroke : '#e2e8f0',
             width: 14,
             height: 14,
           },
           data: { ...edge.data, dimmed: !active },
           labelStyle: active
-            ? { fontSize: 11, fill: '#4338ca', fontWeight: 600 }
+            ? { fontSize: 11, fill: diff ? activeStroke : '#4338ca', fontWeight: diff ? 700 : 600 }
             : { fontSize: 10, fill: '#e2e8f0', fontWeight: 500 },
           labelBgStyle: active
             ? { fill: '#eef2ff', fillOpacity: 1 }
@@ -946,6 +1093,20 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
           zIndex: active ? 10 : 0,
         };
       });
+    }
+    // Changes only, with nothing selected: the diff is the subject and the neighbours are context,
+    // so a relationship the proposal does not touch reads as background. Without this the dimmed
+    // nodes were joined by full-strength lines and labels, which drew the eye to the context.
+    if (changesOnly && hasDiff) {
+      return layouted.edges.map((edge) => (edge.data?.diff ? edge : {
+        ...edge,
+        style: { ...edge.style, stroke: '#e2e8f0', strokeWidth: 1 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#e2e8f0', width: 14, height: 14 },
+        data: { ...edge.data, dimmed: true },
+        labelStyle: { fontSize: 10, fill: '#cbd5e1', fontWeight: 500 },
+        labelBgStyle: { fill: '#fff', fillOpacity: 0.6 },
+        zIndex: 0,
+      }));
     }
     // Search context: dim edges where either endpoint is a non-match (the
     // server already drops context↔context edges, so what remains is
@@ -972,7 +1133,7 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
         labelBgStyle: { fill: '#fff', fillOpacity: 0.5 },
       };
     });
-  }, [layouted.edges, selectedNode, adjacency, layouted.nodes]);
+  }, [layouted.edges, selectedNode, selectedEdge, adjacency, layouted.nodes, changesOnly, hasDiff]);
 
   // Initial state: skip the saved-position overlay when mounting with a
   // filtered subgraph. HTMX morph re-mounts this component on each search
@@ -1019,17 +1180,167 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
     setEdges(displayEdges);
   }
 
-  const onNodeClick = useCallback((_event, node) => {
-    setSelectedNode((prev) => prev?.id === node.id ? null : node);
+  /**
+   * Bring the selected element to the middle of the canvas.
+   *
+   * Not the same job as getting a node out from under a panel, though one function used to do both —
+   * and removing the overlap took this with it. Selecting a card in the list has to move the canvas
+   * to it, because the reader's whole reason for clicking is to see where it sits; and opening the
+   * panel narrows the canvas, which shifts what is visible even when nothing is covering it.
+   */
+  const focusNode = useCallback((node) => {
+    if (!node) return;
+    // With the lookup, so a node inside a group is measured where it actually sits.
+    const bounds = getNodesBounds([node], { nodeLookup: store.getState().nodeLookup });
+    if (!bounds || !bounds.width) return;
+    setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, {
+      zoom: getViewport().zoom,
+      duration: 400,
+    });
+  }, [getNodesBounds, getViewport, setCenter, store]);
+
+  /**
+   * Centre on the selection, once, when React Flow knows how wide it is.
+   *
+   * Centring at click time computes against the canvas as it was: selecting the first change opens
+   * the detail panel and takes half the width, and React Flow measures itself asynchronously. The
+   * first attempt at this centred immediately and corrected afterwards, which is two pans for every
+   * click — a fast move and then a small step.
+   *
+   * Depending on React Flow's own width instead means the centring happens when the value it is
+   * computed from actually changes: once per selection, and once more only when the canvas really
+   * did resize under it.
+   */
+  useEffect(() => {
+    if (selectedNode) focusNode(selectedNode);
+  }, [selectedNode, flowWidth, focusNode]);
+
+  /**
+   * Centre on what the host says is being read.
+   *
+   * The graph is beside a page about one element, so it opens on that element rather than on the
+   * whole picture with the reader left to find it. Marked selected as well as centred: a node in the
+   * middle of a canvas is not obviously the subject unless it says so.
+   */
+  const focusedRef = useRef(null);
+  useEffect(() => {
+    if (!focus || focusedRef.current === focus) return;
+    const node = getNodes().find((n) => n.data?.externalId === focus);
+    // Retried through `nodes` because the first render has none yet — and guarded by the ref because
+    // selecting one recomputes them, which without it is a loop that renders until React gives up.
+    if (!node) return;
+    focusedRef.current = focus;
+    // The host is already showing this one — that is why it asked for it to be centred.
+    setPanelClaimed(true);
+    setSelectedNode(node);
+  }, [focus, getNodes, nodes]);
+
+  const onNodeClick = useCallback((event, node) => {
+    setSelectedEdge(null);
+    const deselecting = selectedNode?.id === node.id;
+    setSelectedNode(deselecting ? null : node);
+
+    // A host may own what a click means — the review does, where picking a changed node is picking
+    // which change to read, and the page that shows it is not this component. Reported by stable id,
+    // the only identifier that means anything outside this process.
+    //
+    // Whether it owns *this* click is its answer, not a standing arrangement: a review has a page for
+    // the elements a proposal touches and none for the neighbours drawn around them. Handing an
+    // unclaimed click back is what lets the panel describe those, as it does anywhere else.
+    const claimed = Boolean(onSelect) && !deselecting && Boolean(node.data?.externalId) &&
+      onSelect(node.data.externalId, node) === true;
+    setPanelClaimed(claimed);
+  }, [selectedNode, onSelect]);
+
+  // A relationship is a change in its own right, so it has to be inspectable on its own — the panel
+  // is the only place a reader can see what the branch did to one.
+  const onEdgeClick = useCallback((_event, edge) => {
+    setSelectedNode(null);
+    setSelectedEdge((prev) => prev?.id === edge.id ? null : edge);
   }, []);
 
   const onPaneClick = useCallback(() => {
     setSelectedNode(null);
+    setSelectedEdge(null);
   }, []);
+
+
+  // Kept together so the toolbar can live in its own row above the panels rather than under them.
+  const viewControls = (
+    // Down the edge rather than across the top: the canvas is the scarce dimension once the panels
+    // sit beside it, and a column costs one icon's width instead of four buttons' worth.
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+        {/* Wider than the glyphs below it, and only present when the diagram actually reaches into
+            another namespace — which is why the column aligns to its right edge rather than
+            stretching every button to this one's width. */}
+        {foreignNamespaces.length > 0 && (
+          <NamespaceFilter
+            namespaces={foreignNamespaces}
+            hidden={hiddenNamespaces}
+            onToggle={toggleNamespace}
+            onSetAll={setAllNamespaces}
+          />
+        )}
+        {hasDiff && (
+          <button
+            onClick={() => {
+              setChangesOnly((v) => !v);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+            }}
+            style={toggleBtnStyle(changesOnly)}
+            onMouseOver={(e) => { if (!changesOnly) e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { if (!changesOnly) e.currentTarget.style.background = '#fff'; }}
+            title={t('toolbar.changesOnly.title')}
+                aria-label={t('toolbar.changesOnly.label')}
+                aria-pressed={changesOnly}
+          >
+            <span style={toolbarIconStyle} aria-hidden="true">{changesOnlyIcon}</span>
+          </button>
+        )}
+        {!isHierarchy && hasGroups && (
+          <button
+            onClick={() => {
+              setShowGroups((v) => !v);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+            }}
+            style={toggleBtnStyle(showGroups)}
+            onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
+            title={t('toolbar.showGroups.title')}
+                aria-label={t('toolbar.showGroups.label')}
+                aria-pressed={showGroups}
+          >
+            <span style={toolbarIconStyle} aria-hidden="true">{groupsIcon}</span>
+          </button>
+        )}
+        {!isHierarchy && (
+          <button
+            onClick={() => {
+              setShowProperties((v) => !v);
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
+            }}
+            style={toggleBtnStyle(showProperties)}
+            onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
+            title={t('toolbar.erd.title')}
+                aria-label={t('toolbar.erd.label')}
+                aria-pressed={showProperties}
+          >
+            <span style={toolbarIconStyle} aria-hidden="true">{erdIcon}</span>
+          </button>
+        )}
+        <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
+      </div>
+  );
 
   return (
     <GroupActionsContext.Provider value={groupActions}>
-    <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    {/* A row, not a stack. The panels used to float over the canvas, which meant opening one hid the
+        element it was describing — and every fix for that (panning the node back into view, offsetting
+        the toolbar) was working around the overlap rather than removing it. Laid out side by side, the
+        graph keeps whatever width is left and nothing is ever underneath anything. */}
+    <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', minWidth: 0 }}>
+      <div ref={canvasRef} style={{ flex: 1, minWidth: 0, position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1050,6 +1361,7 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
         minZoom={0.1}
         maxZoom={2}
         onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onNodeDragStop={onNodeDragStop}
       >
@@ -1092,56 +1404,21 @@ export default function App({ graphData, customHeight, layout, storageKey, showM
           </ControlButton>
         </Controls>
         {showMiniMap && <MiniMap zoomable pannable />}
-        <Panel position="top-right">
-          <div style={{ display: 'flex', gap: 6 }}>
-            {!isHierarchy && hasGroups && (
-              <button
-                onClick={() => {
-                  setShowGroups((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
-                }}
-                style={toggleBtnStyle(showGroups)}
-                onMouseOver={(e) => { if (!showGroups) e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseOut={(e) => { if (!showGroups) e.currentTarget.style.background = '#fff'; }}
-                title={t('toolbar.showGroups.title')}
-              >
-                {t('toolbar.showGroups.label')}
-              </button>
-            )}
-            {!isHierarchy && (
-              <button
-                onClick={() => {
-                  setShowProperties((v) => !v);
-                  setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 0);
-                }}
-                style={toggleBtnStyle(showProperties)}
-                onMouseOver={(e) => { if (!showProperties) e.currentTarget.style.background = '#f9fafb'; }}
-                onMouseOut={(e) => { if (!showProperties) e.currentTarget.style.background = '#fff'; }}
-                title={t('toolbar.erd.title')}
-              >
-                {t('toolbar.erd.label')}
-              </button>
-            )}
-            {foreignNamespaces.length > 0 && (
-              <NamespaceFilter
-                namespaces={foreignNamespaces}
-                hidden={hiddenNamespaces}
-                onToggle={toggleNamespace}
-                onSetAll={setAllNamespaces}
-              />
-            )}
-            <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
-          </div>
-        </Panel>
+        <Panel position="top-right">{viewControls}</Panel>
       </ReactFlow>
+      </div>
+      {/* Withheld only for the selections the host claimed — it answers those with its own account
+          of the element, and two of them side by side is one too many. */}
       <DetailPanel
-        node={selectedNode}
+        node={panelClaimed ? null : selectedNode}
+        changesOnly={changesOnly}
+        edge={selectedEdge}
         graphData={graphData}
         isCollapsed={selectedNode ? collapsedGroups.has(selectedNode.id) : false}
         onToggleCollapse={toggleCollapse}
         onCollapseOthers={collapseOthers}
         onExpandAll={expandAll}
-        onClose={() => setSelectedNode(null)}
+        onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
       />
     </div>
     </GroupActionsContext.Provider>

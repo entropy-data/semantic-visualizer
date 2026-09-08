@@ -26,6 +26,7 @@ function initElement(container) {
   const height = container.dataset.height || '400px';
   const layout = container.dataset.layout || 'force';
   const showMiniMap = container.dataset.showMinimap === 'true';
+  const changesOnly = container.dataset.changesOnly === 'true';
 
   if (!jsonUrl) return;
 
@@ -41,7 +42,8 @@ function initElement(container) {
       createRoot(container).render(
         <I18nextProvider i18n={i18n}>
           <ReactFlowProvider>
-            <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)} showMiniMap={showMiniMap} />
+            <App graphData={data} customHeight={height} layout={layout} storageKey={storageKeyFor(jsonUrl)}
+                 showMiniMap={showMiniMap} changesOnly={changesOnly} />
           </ReactFlowProvider>
         </I18nextProvider>
       );
@@ -60,3 +62,69 @@ if (document.readyState === 'loading') {
 }
 
 document.addEventListener('htmx:load', mountAll);
+
+/**
+ * Explicit mount, for a host that has more to supply than a URL.
+ *
+ * Deliberately shaped like the data contract editor's `init({...})` rather than inventing a
+ * convention: entropy-data already embeds components that way, and a callback is what lets this stay
+ * ignorant of authentication and of the endpoint behind it. The auto-mount above is untouched, so the
+ * read-only embeds keep working without knowing this exists.
+ *
+ * @param {object}   options
+ * @param {string|Element} options.container   selector or element to mount into
+ * @param {object}   options.graphData         `{nodes, edges}`, e.g. from the namespace graph endpoint
+ * @param {boolean}  [options.changesOnly]     open showing only what carries a diff
+ * @param {string}   [options.focus]           external id to centre and select on mount
+ * @param {Function} [options.onSelect]        `(externalId, node) => void` — the host owns what a
+ *                                             click means; supplying this also withholds the built-in
+ *                                             detail panel, so one click opens one account of an
+ *                                             element rather than two
+ * @param {string}   [options.locale]
+ * @param {string}   [options.height]
+ * @returns {{ update: (next: object) => void } | null} `update` merges `graphData`, `focus`,
+ *          `changesOnly` and `onSelect` into the options and re-renders; container, height, locale
+ *          and layout are fixed at mount
+ */
+export function init(options) {
+  const container = typeof options.container === 'string'
+    ? document.querySelector(options.container)
+    : options.container;
+  if (!container) return null;
+
+  const height = options.height || '600px';
+  container.style.height = height;
+  // Everything that reaches for its own container does so via `.semantic-visualizer` — the enlarge
+  // button among them, which silently did nothing when mounted this way because `closest()` found no
+  // such ancestor. Marking it initialised too keeps the auto-mount from claiming it as well.
+  container.classList.add('semantic-visualizer');
+  container.dataset.svInit = 'true';
+  if (options.locale) i18n.changeLanguage(options.locale);
+
+  const root = createRoot(container);
+  let current = { ...options };
+  const render = () => root.render(
+    <I18nextProvider i18n={i18n}>
+      <ReactFlowProvider>
+        <App
+          graphData={current.graphData}
+          changesOnly={current.changesOnly}
+          focus={current.focus}
+          onSelect={current.onSelect}
+          customHeight={height}
+          layout={options.layout || 'force'}
+          storageKey={options.storageKey || storageKeyFor(typeof options.container === 'string' ? options.container : container.id)}
+          showMiniMap={options.showMiniMap === true}
+        />
+      </ReactFlowProvider>
+    </I18nextProvider>
+  );
+
+  render();
+  return {
+    update: (next) => {
+      current = { ...current, ...next };
+      render();
+    },
+  };
+}

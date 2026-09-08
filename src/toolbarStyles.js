@@ -1,4 +1,5 @@
-// Shared look for the top-right toolbar buttons (App.jsx, NamespaceFilter.jsx).
+// The labelled top-right toolbar button. App.jsx's own toggles are square glyphs with their own
+// style; this is what a control that still carries words looks like beside them.
 export const toggleBtnStyle = (active) => ({
   borderRadius: 4,
   background: active ? '#eef2ff' : '#fff',

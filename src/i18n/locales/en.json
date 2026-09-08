@@ -21,6 +21,10 @@
       "label": "Show as Entity-Relationship-Diagram",
       "title": "Show as Entity-Relationship Diagram — render properties inside concept and metric nodes"
     },
+    "changesOnly": {
+      "label": "Changes only",
+      "title": "Show only the concepts and relationships this branch touches"
+    },
     "namespaces": {
       "label": "Other namespaces",
       "title": "Show or hide the concepts that come from other namespaces",
@@ -42,16 +46,67 @@
       "entity": "Entity",
       "property": "Property",
       "metric": "Metric",
-      "group": "Group"
+      "group": "Group",
+      "relationship": "Relationship"
     },
     "expandThisGroup": "Expand this group",
-    "collapseThisGroup": "Collapse this group"
+    "collapseThisGroup": "Collapse this group",
+    "diff": {
+      "op": {
+        "add": "Added",
+        "modify": "Edited",
+        "remove": "Removed",
+        "conflict": "Conflicted"
+      },
+      "impact": {
+        "structural": "Structural",
+        "descriptive": "Descriptive",
+        "cosmetic": "Cosmetic"
+      },
+      "impactHint": {
+        "structural": "Changes what the model means.",
+        "descriptive": "Changes how the model reads, not what it means.",
+        "cosmetic": "Wording only."
+      },
+      "summary": {
+        "add": "Does not exist yet. Approving this request creates it.",
+        "remove": "Approving this request deletes it.",
+        "modify": "Approving this request applies the following."
+      },
+      "before": "Now",
+      "after": "Proposed",
+      "unset": "not set",
+      "base": "Was"
+    },
+    "consumers": {
+      "heading": "Breaks on removal",
+      "description": "These depend on this concept and do not decide this change. Removing it leaves their references broken.",
+      "relationship": "relationships in other namespaces",
+      "dataProduct": "data products",
+      "dataContract": "data contracts"
+    },
+    "unresolved": "This concept does not exist. A relationship on this branch points at it, so the branch cannot be merged as it stands.",
+    "evidence": {
+      "heading": "Evidence",
+      "none": "This change cites nothing. It cannot be checked against a source.",
+      "unresolvable": "Cannot be checked again — no repository, path and commit"
+    },
+    "propertiesChanged": ", {{count}} changed",
+    "shared": "shared"
   },
   "node": {
     "noProperties": "No properties",
     "group": "Group",
     "expandGroup": "Expand group",
     "collapseGroup": "Collapse group",
-    "foreignNamespace": "From the \"{{namespace}}\" namespace"
+    "propertiesChanged_one": "{{count}} property changed",
+    "propertiesChanged_other": "{{count}} properties changed",
+    "foreignNamespace": "From the \"{{namespace}}\" namespace",
+    "diff": {
+      "add": "added",
+      "modify": "edited",
+      "remove": "removed",
+      "conflict": "conflicted"
+    }
   }
 }
