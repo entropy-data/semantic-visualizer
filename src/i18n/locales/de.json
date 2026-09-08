@@ -55,7 +55,8 @@
       "op": {
         "add": "Hinzugefügt",
         "modify": "Bearbeitet",
-        "remove": "Entfernt"
+        "remove": "Entfernt",
+        "conflict": "Konflikt"
       },
       "impact": {
         "structural": "Strukturell",
@@ -104,7 +105,8 @@
     "diff": {
       "add": "hinzugefügt",
       "modify": "bearbeitet",
-      "remove": "entfernt"
+      "remove": "entfernt",
+      "conflict": "Konflikt"
     }
   }
 }

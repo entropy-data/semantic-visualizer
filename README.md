@@ -85,7 +85,7 @@ mount. `init` returns `null` when the container is not found.
 | `highlight` | boolean? | Search hit; also switches on the entity-relationship view when a property matches |
 | `searchMatch` | boolean? | `false` marks a 1-hop neighbour included only as context |
 | `properties` | Property[] | Rendered as rows in the entity-relationship view and the panel |
-| `diff` | `add` \| `modify` \| `remove`? | What the branch does to this element; ring and badge on the node |
+| `diff` | `add` \| `modify` \| `remove` \| `conflict`? | What the branch does to this element; ring and badge on the node |
 | `diffDetail` | DiffDetail? | What changed, for the panel |
 | `changedPropertyCount` | number? | How many of its properties carry a diff when the concept itself does not; keeps it in the changes-only view |
 | `evidence` | Evidence[]? | What the change cites |
@@ -106,7 +106,7 @@ mount. `init` returns `null` when the container is not found.
 | `inherited` | boolean? | Listed separately, italic |
 | `shared` | boolean? | Carried by several concepts; badged in the panel |
 | `highlight` | boolean? | Search hit; the row is accented and auto-expanded |
-| `diff` | `add` \| `modify` \| `remove`? | Rail, badge and strike-through on the row |
+| `diff` | `add` \| `modify` \| `remove` \| `conflict`? | Rail, badge and strike-through on the row |
 | `diffDetail` | DiffDetail? | Its `fields` render on the row in the panel |
 
 ### Edge
@@ -118,7 +118,7 @@ mount. `init` returns `null` when the container is not found.
 | `label` | string | Drawn on the edge |
 | `type` | string | Relationship type, e.g. `hasProperty`, `relatedTo`, `isA` |
 | `externalId` | string? | Stable id |
-| `diff` | `add` \| `modify` \| `remove`? | Coloured stroke; `remove` is dashed. Both ends count as changed for the changes-only view |
+| `diff` | `add` \| `modify` \| `remove` \| `conflict`? | Coloured stroke; `remove` is dashed. Both ends count as changed for the changes-only view |
 | `diffDetail` | DiffDetail? | Shown when the edge is clicked |
 | `evidence`, `evidenceMissing` | | As on nodes |
 
@@ -126,7 +126,7 @@ mount. `init` returns `null` when the container is not found.
 
 ```json
 {
-  "op": "add | modify | remove",
+  "op": "add | modify | remove | conflict",
   "impact": "structural | descriptive | cosmetic",
   "fields": [
     { "field": "description", "before": "…", "after": "…", "base": "…", "impact": "descriptive" }

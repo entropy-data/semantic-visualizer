@@ -8,4 +8,7 @@ export const DIFF_STYLES = {
   add: { color: '#16a34a', label: 'added', symbol: '+' },      // green-600
   modify: { color: '#d97706', label: 'edited', symbol: '~' },  // amber-600
   remove: { color: '#dc2626', label: 'removed', symbol: '−' }, // red-600
+  // Main changed the element too: the thing to notice before the change itself. Amber like an
+  // edit, told apart by the mark.
+  conflict: { color: '#d97706', label: 'conflicted', symbol: '!' },
 };
