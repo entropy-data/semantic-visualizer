@@ -65,7 +65,8 @@
 
 /* Edge labels read as chips over the graph, so they belong above every edge layer. React Flow gives
    each zIndex band its own SVG and leaves this container below the raised ones, which put a diff
-   edge's dashes through a neighbouring label. Pointer events stay off, so nothing else changes. */
+   edge's dashes through a neighbouring label. Concept pills sit above this layer (NODE_Z in App.jsx),
+   so a label never covers a concept's name. Pointer events stay off, so nothing else changes. */
 .react-flow__edgelabel-renderer {
   z-index: 11;
 }

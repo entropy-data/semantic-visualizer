@@ -56,6 +56,14 @@ const edgeTypes = {
   floating: FloatingEdge,
 };
 
+// The canvas is stacked by hand (zIndexMode="manual"), bottom to top: group hulls, edges (0, a diff
+// at 5, a focused one at 10), the edge-label layer (11, see index.css), then the concept pills, so a
+// label that runs into a concept tucks under it instead of covering its name. React Flow's default
+// mode adds a grouped node's z to every edge touching it, which would lift those edges and their
+// dashes back over the labels.
+const GROUP_Z = -10;
+const NODE_Z = 20;
+
 function toReactFlowElements(graphData) {
   const connectionCount = {};
   graphData.edges.forEach((e) => {
@@ -68,6 +76,7 @@ function toReactFlowElements(graphData) {
     type: n.type || 'entity',
     parentId: n.parentId || undefined,
     position: { x: 0, y: 0 },
+    zIndex: n.type === 'group' ? GROUP_Z : NODE_Z,
     data: { ...n.data, connections: connectionCount[n.id] || 0 },
   }));
 
@@ -616,6 +625,8 @@ function applyCollapseTransform({ nodes, edges }, collapsedSet) {
       return {
         ...rest,
         type: 'collapsed_group',
+        // A collapsed group is an endpoint like any concept, so it sits above the labels too.
+        zIndex: NODE_Z,
         data: { ...n.data, collapsed: true, memberCount: memberCount.get(n.id) || 0 },
       };
     });
@@ -1372,6 +1383,7 @@ export default function App({
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        zIndexMode="manual"
         fitView
         fitViewOptions={{ padding: 0.1, maxZoom: 1.5 }}
         nodesDraggable={true}
