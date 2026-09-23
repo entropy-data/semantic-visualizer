@@ -46,6 +46,25 @@ export const collapseAllIcon = (
   </svg>
 );
 
+// Diagonal arrows, so full screen does not look like the corner brackets of fit view.
+export const enterFullScreenIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'none' }} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 3h6v6" />
+    <path d="M9 21H3v-6" />
+    <path d="M21 3l-7 7" />
+    <path d="M3 21l7-7" />
+  </svg>
+);
+
+export const exitFullScreenIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style={{ fill: 'none' }} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 14h6v6" />
+    <path d="M20 10h-6V4" />
+    <path d="M14 10l7-7" />
+    <path d="M3 21l7-7" />
+  </svg>
+);
+
 // --- Toolbar toggles -----------------------------------------------------------------------------
 //
 // Drawn in the same stroke language as the zoom and fit-view glyphs above, at 24×24 so they sit on
@@ -76,13 +95,5 @@ export const erdIcon = (
        stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3.25" y="3.75" width="17.5" height="16.5" rx="2" />
     <path d="M3.25 9h17.5M3.25 14.5h17.5M9.5 9v11.25" />
-  </svg>
-);
-
-/** Enlarge: arrows pushing out to the corners. */
-export const enlargeIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" style={{ fill: 'none' }}
-       stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 3.75H3.75V9M15 3.75h5.25V9M15 20.25h5.25V15M9 20.25H3.75V15" />
   </svg>
 );

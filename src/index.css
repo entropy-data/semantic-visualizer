@@ -69,3 +69,8 @@
 .react-flow__edgelabel-renderer {
   z-index: 11;
 }
+
+/* In the browser's full-screen mode the page behind is gone, so the graph needs its own ground. */
+.semantic-visualizer:fullscreen {
+  background: #ffffff;
+}

@@ -24,7 +24,7 @@ import NamespaceFilter from './NamespaceFilter';
 import { GroupActionsContext } from './GroupActionsContext';
 import {
   zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon,
-  changesOnlyIcon, groupsIcon, erdIcon, enlargeIcon,
+  enterFullScreenIcon, exitFullScreenIcon, changesOnlyIcon, groupsIcon, erdIcon,
 } from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
 import { DIFF_STYLES } from './diffStyles';
@@ -178,7 +178,10 @@ function forceLayoutComponent(compNodes, compEdges, entityMode, nodeSizes, seed)
     x: Math.cos(2 * Math.PI * i / n + angleOffset) * radius,
     y: Math.sin(2 * Math.PI * i / n + angleOffset) * radius,
   }));
-  const simLinks = compEdges.map((e) => ({ source: e.source, target: e.target }));
+  // A self-loop has no length to enforce, so it contributes nothing to the force layout.
+  const simLinks = compEdges
+    .filter((e) => e.source !== e.target)
+    .map((e) => ({ source: e.source, target: e.target }));
 
   const charge = forceManyBody().strength(chargeStrength);
   if (large) charge.theta(1.2);
@@ -687,40 +690,6 @@ const FOREIGN_NAMESPACE_LIMIT = 10;
 /** Sized here rather than in each glyph so the four stay on one grid. */
 const toolbarIconStyle = { width: 17, height: 17, display: 'block' };
 
-// Enlarge/shrink button
-function EnlargeButton({ customHeight, containerRef }) {
-  const { t } = useTranslation();
-  const { fitView } = useReactFlow();
-  const [enlarged, setEnlarged] = useState(false);
-
-  const toggle = useCallback(() => {
-    const container = containerRef.current?.closest('.semantic-visualizer');
-    if (!container) return;
-    if (enlarged) {
-      container.style.height = customHeight;
-      setEnlarged(false);
-    } else {
-      container.style.height = '100vh';
-      setEnlarged(true);
-    }
-    setTimeout(() => {
-      fitView();
-      container.scrollIntoView(true);
-    }, 0);
-  }, [enlarged, customHeight, fitView, containerRef]);
-
-  return (
-    <button onClick={toggle} style={toggleBtnStyle(enlarged)}
-      title={enlarged ? t('controls.shrink') : t('controls.enlarge')}
-      aria-label={enlarged ? t('controls.shrink') : t('controls.enlarge')}
-      aria-pressed={enlarged}
-      onMouseOver={(e) => { if (!enlarged) e.currentTarget.style.background = '#f9fafb'; }}
-      onMouseOut={(e) => { if (!enlarged) e.currentTarget.style.background = '#fff'; }}>
-      <span style={toolbarIconStyle} aria-hidden="true">{enlargeIcon}</span>
-    </button>
-  );
-}
-
 export default function App({
   graphData,
   customHeight,
@@ -1215,6 +1184,62 @@ export default function App({
     if (selectedNode) focusNode(selectedNode);
   }, [selectedNode, flowWidth, focusNode]);
 
+  // Full screen uses the browser's full-screen mode for the host element, so the detail panel comes
+  // along; Esc leaves it. Where the browser does not allow it (some embeds, iOS), the graph stretches
+  // to the window height instead. Either way the graph is framed afresh for its new size, the way the
+  // embed first framed it: a zoom carried over from a short embed leaves it small in an empty screen,
+  // and one carried back crops it. A selection wins, as the effect above recentres on it too once the
+  // canvas has resized.
+  const [fullScreen, setFullScreen] = useState(false);
+  const inFullScreen = useRef(false);
+  const hostElement = () => containerRef.current?.closest('.semantic-visualizer');
+
+  const reframe = useCallback(() => {
+    // Two frames: the first lets the container take its new size, the second frames in it.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (selectedNode) {
+        focusNode(selectedNode);
+      } else {
+        fitView({ padding: 0.1, maxZoom: 1.5 });
+      }
+    }));
+  }, [selectedNode, focusNode, fitView]);
+
+  useEffect(() => {
+    const onChange = () => {
+      const host = hostElement();
+      const now = Boolean(host) && document.fullscreenElement === host;
+      // Every visualizer on the page hears this, and the way out may be Esc rather than the button,
+      // so what decides is whether this one's own element went in or came out.
+      if (now === inFullScreen.current) return;
+      inFullScreen.current = now;
+      setFullScreen(now);
+      reframe();
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [reframe]);
+
+  const stretch = (host, stretched) => {
+    host.style.height = stretched ? '100vh' : (customHeight || '400px');
+    setFullScreen(stretched);
+    host.scrollIntoView(true);
+    reframe();
+  };
+  const toggleFullScreen = () => {
+    const host = hostElement();
+    if (!host) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else if (fullScreen) {
+      stretch(host, false);
+    } else if (document.fullscreenEnabled && host.requestFullscreen) {
+      host.requestFullscreen().catch(() => stretch(host, true));
+    } else {
+      stretch(host, true);
+    }
+  };
+
   /**
    * Centre on what the host says is being read.
    *
@@ -1329,7 +1354,6 @@ export default function App({
             <span style={toolbarIconStyle} aria-hidden="true">{erdIcon}</span>
           </button>
         )}
-        <EnlargeButton customHeight={customHeight || '400px'} containerRef={containerRef} />
       </div>
   );
 
@@ -1401,6 +1425,13 @@ export default function App({
             aria-label={t('controls.fitView')}
           >
             {fitViewIcon}
+          </ControlButton>
+          <ControlButton
+            onClick={toggleFullScreen}
+            title={t(fullScreen ? 'controls.exitFullScreen' : 'controls.fullScreen')}
+            aria-label={t(fullScreen ? 'controls.exitFullScreen' : 'controls.fullScreen')}
+          >
+            {fullScreen ? exitFullScreenIcon : enterFullScreenIcon}
           </ControlButton>
         </Controls>
         {showMiniMap && <MiniMap zoomable pannable />}

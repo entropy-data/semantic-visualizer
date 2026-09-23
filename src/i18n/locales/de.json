@@ -9,8 +9,8 @@
     "zoomIn": "Hineinzoomen",
     "zoomOut": "Herauszoomen",
     "fitView": "Ansicht einpassen",
-    "enlarge": "Vergrößern",
-    "shrink": "Verkleinern"
+    "fullScreen": "Vollbild",
+    "exitFullScreen": "Vollbild beenden"
   },
   "toolbar": {
     "showGroups": {
