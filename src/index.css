@@ -71,6 +71,14 @@
   z-index: 11;
 }
 
+/* A label with no free spot on its edge is shown only on hover or selection, through the viewport
+   portal, and wherever it goes it overlaps something, so this layer sits above the concepts
+   (NODE_Z in App.jsx). Nothing else in the visualizer renders into it. */
+.semantic-visualizer .react-flow__viewport-portal {
+  z-index: 30;
+  pointer-events: none;
+}
+
 /* In the browser's full-screen mode the page behind is gone, so the graph needs its own ground. */
 .semantic-visualizer:fullscreen {
   background: #ffffff;

@@ -22,6 +22,8 @@ import FloatingEdge from './FloatingEdge';
 import DetailPanel from './DetailPanel';
 import NamespaceFilter from './NamespaceFilter';
 import { GroupActionsContext } from './GroupActionsContext';
+import { EdgeLabelContext } from './EdgeLabelContext';
+import { placeEdgeLabels, makeLabelMeasurer } from './labelPlacement';
 import {
   zoomInIcon, zoomOutIcon, fitViewIcon, autoLayoutIcon, expandAllIcon, collapseAllIcon,
   enterFullScreenIcon, exitFullScreenIcon, changesOnlyIcon, groupsIcon, erdIcon,
@@ -1126,6 +1128,40 @@ export default function App({
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState(displayEdges);
 
+  // Relationship labels go to free space on their edges, re-placed whenever a concept moves (a
+  // drag, a relayout) or the edges restyle (a selection). `storeNodes` changes on every such move
+  // and on measurement; the node lookup it goes with is where the absolute positions are.
+  const storeNodes = useStore((state) => state.nodes);
+  const nodeLookup = useStore((state) => state.nodeLookup);
+  const domNode = useStore((state) => state.domNode);
+  const measureLabel = useMemo(
+    () => makeLabelMeasurer(domNode ? getComputedStyle(domNode).fontFamily : 'sans-serif'),
+    [domNode],
+  );
+  const labelPlacements = useMemo(
+    () => placeEdgeLabels(edges, nodeLookup, measureLabel),
+    [edges, storeNodes, nodeLookup, measureLabel],
+  );
+  // A label with no free spot shows while its edge or one of its concepts is hovered or selected.
+  const [hovered, setHovered] = useState(null);
+  const revealedLabels = useMemo(() => {
+    const ids = new Set();
+    const focusIds = new Set([hovered?.node, selectedNode?.id].filter(Boolean));
+    edges.forEach((e) => {
+      if (focusIds.has(e.source) || focusIds.has(e.target)) ids.add(e.id);
+    });
+    if (hovered?.edge) ids.add(hovered.edge);
+    if (selectedEdge) ids.add(selectedEdge.id);
+    return ids;
+  }, [edges, hovered, selectedNode, selectedEdge]);
+  const edgeLabels = useMemo(
+    () => ({ placements: labelPlacements, revealed: revealedLabels }),
+    [labelPlacements, revealedLabels],
+  );
+  const onEdgeMouseEnter = useCallback((_event, edge) => setHovered({ edge: edge.id }), []);
+  const onNodeMouseEnter = useCallback((_event, node) => setHovered({ node: node.id }), []);
+  const onHoverEnd = useCallback(() => setHovered(null), []);
+
   const [prevLayouted, setPrevLayouted] = useState(layouted);
   const [prevDisplayEdges, setPrevDisplayEdges] = useState(displayEdges);
   const [prevGraphData, setPrevGraphData] = useState(graphData);
@@ -1376,6 +1412,7 @@ export default function App({
         graph keeps whatever width is left and nothing is ever underneath anything. */}
     <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', minWidth: 0 }}>
       <div ref={canvasRef} style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+      <EdgeLabelContext.Provider value={edgeLabels}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -1400,6 +1437,10 @@ export default function App({
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         onNodeDragStop={onNodeDragStop}
+        onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseLeave={onHoverEnd}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onHoverEnd}
       >
         <Background color="#e2e8f0" gap={20} />
         <Controls position="bottom-left" showZoom={false} showFitView={false} showInteractive={false}>
@@ -1449,6 +1490,7 @@ export default function App({
         {showMiniMap && <MiniMap zoomable pannable />}
         <Panel position="top-right">{viewControls}</Panel>
       </ReactFlow>
+      </EdgeLabelContext.Provider>
       </div>
       {/* Withheld only for the selections the host claimed — it answers those with its own account
           of the element, and two of them side by side is one too many. */}
