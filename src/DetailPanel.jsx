@@ -12,24 +12,31 @@ const IMPACT_COLORS = {
 };
 
 /**
- * Half the canvas. A change is read here and merely located out there, so the panel is a working
- * surface rather than a slot beside the picture — and being a share of the width rather than a
- * pixel count, it stays that on any screen.
+ * Half the canvas when the graph carries a diff. A change is read here and merely located out
+ * there, so the panel is a working surface rather than a slot beside the picture — and being a
+ * share of the width rather than a pixel count, it stays that on any screen.
  */
 const DETAIL_PANEL_SHARE = 0.5;
+
+/**
+ * Without a diff the panel holds a description and a few facts, and the graph is what is being
+ * read. Half the canvas left most of the panel empty and squeezed the graph, so it takes a column
+ * sized for its prose instead.
+ */
+const NARROW_PANEL_WIDTH = 'clamp(320px, 30%, 440px)';
 
 // A column beside the canvas rather than over it. Opening it narrows the graph instead of hiding the
 // part of it the reader just clicked, which is what the panning and the toolbar offset existed to
 // paper over.
-const panelStyle = {
-  width: `${DETAIL_PANEL_SHARE * 100}%`,
+const panelStyle = (wide) => ({
+  width: wide ? `${DETAIL_PANEL_SHARE * 100}%` : NARROW_PANEL_WIDTH,
   flexShrink: 0,
   background: '#fff',
   borderLeft: '1px solid #e5e7eb',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-};
+});
 
 /** A body inside a stack flows to its full height; the panel around it is what scrolls. */
 const scrollerStyle = (stacked, extra = {}) => (stacked
@@ -148,9 +155,10 @@ export default function DetailPanel({
   onExpandAll,
   onClose,
   stacked,
+  wide,
 }) {
   const { t } = useTranslation();
-  if (edge) return <EdgePanel edge={edge} graphData={graphData} onClose={onClose} stacked={stacked} />;
+  if (edge) return <EdgePanel edge={edge} graphData={graphData} onClose={onClose} stacked={stacked} wide={wide} />;
   if (!node) return null;
 
   const type = node.type || 'entity';
@@ -162,7 +170,7 @@ export default function DetailPanel({
   const isGroup = GROUP_TYPES.has(type);
 
   return (
-    <div style={stacked ? stackedBodyStyle : panelStyle}>
+    <div style={stacked ? stackedBodyStyle : panelStyle(wide)}>
       {/* Accent bar */}
       <div style={{ height: 4, background: accentColor, flexShrink: 0 }} />
 
@@ -294,7 +302,7 @@ export default function DetailPanel({
   );
 }
 
-function EdgePanel({ edge, graphData, onClose, stacked }) {
+function EdgePanel({ edge, graphData, onClose, stacked, wide }) {
   const { t } = useTranslation();
   // Selection can arrive either as a React Flow edge (clicked in the canvas, diff data nested under
   // `data`) or as a raw graph edge (clicked in the related-changes list, diff data at the top level).
@@ -304,7 +312,7 @@ function EdgePanel({ edge, graphData, onClose, stacked }) {
   const nameOf = (id) => graphData?.nodes?.find((n) => n.id === id)?.data?.label || id;
 
   return (
-    <div style={stacked ? stackedBodyStyle : panelStyle}>
+    <div style={stacked ? stackedBodyStyle : panelStyle(wide)}>
       <div style={{ height: 4, background: accentColor, flexShrink: 0 }} />
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

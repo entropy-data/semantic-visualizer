@@ -1219,7 +1219,7 @@ export default function App({
    * Centre on the selection, once, when React Flow knows how wide it is.
    *
    * Centring at click time computes against the canvas as it was: selecting the first change opens
-   * the detail panel and takes half the width, and React Flow measures itself asynchronously. The
+   * the detail panel and narrows the canvas, and React Flow measures itself asynchronously. The
    * first attempt at this centred immediately and corrected afterwards, which is two pans for every
    * click — a fast move and then a small step.
    *
@@ -1504,6 +1504,7 @@ export default function App({
         onCollapseOthers={collapseOthers}
         onExpandAll={expandAll}
         onClose={() => { setSelectedNode(null); setSelectedEdge(null); }}
+        wide={hasDiff}
       />
     </div>
     </GroupActionsContext.Provider>
