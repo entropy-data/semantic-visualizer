@@ -1,0 +1,57 @@
+{
+  "controls": {
+    "expandAll": "Développer tous les groupes",
+    "collapseAll": "Réduire tous les groupes",
+    "autoLayout": {
+      "title": "Disposition automatique : réorganiser le diagramme",
+      "label": "Disposition auto"
+    },
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "fitView": "Ajuster la vue",
+    "enlarge": "agrandir",
+    "shrink": "réduire"
+  },
+  "toolbar": {
+    "showGroups": {
+      "label": "Afficher les groupes",
+      "title": "Afficher les groupes comme conteneurs autour des concepts et propriétés qui leur appartiennent"
+    },
+    "erd": {
+      "label": "Afficher en diagramme entité-relation",
+      "title": "Afficher en diagramme entité-relation : propriétés affichées dans les nœuds de concept et de métrique"
+    },
+    "namespaces": {
+      "label": "Autres espaces de noms",
+      "title": "Afficher ou masquer les concepts provenant d’autres espaces de noms",
+      "summary": "{{shown}} sur {{total}} affichés",
+      "showAll": "Tout afficher",
+      "hideAll": "Tout masquer"
+    }
+  },
+  "detail": {
+    "close": "Fermer",
+    "openDetails": "Ouvrir les détails →",
+    "properties": "Propriétés",
+    "inherited": "Hérité",
+    "noProperties": "Aucune propriété",
+    "noMembers": "Aucun membre",
+    "members": "Membres ({{count}})",
+    "membersTotal": ", {{total}} au total",
+    "type": {
+      "entity": "Entité",
+      "property": "Propriété",
+      "metric": "Métrique",
+      "group": "Groupe"
+    },
+    "expandThisGroup": "Développer ce groupe",
+    "collapseThisGroup": "Réduire ce groupe"
+  },
+  "node": {
+    "noProperties": "Aucune propriété",
+    "group": "Groupe",
+    "expandGroup": "Développer le groupe",
+    "collapseGroup": "Réduire le groupe",
+    "foreignNamespace": "De l’espace de noms « {{namespace}} »"
+  }
+}

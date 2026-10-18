@@ -1,0 +1,57 @@
+{
+  "controls": {
+    "expandAll": "Fäll ut alla grupper",
+    "collapseAll": "Fäll ihop alla grupper",
+    "autoLayout": {
+      "title": "Automatisk layout: ordna om diagrammet",
+      "label": "Automatisk layout"
+    },
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut",
+    "fitView": "Anpassa vy",
+    "enlarge": "förstora",
+    "shrink": "förminska"
+  },
+  "toolbar": {
+    "showGroups": {
+      "label": "Visa grupper",
+      "title": "Rendera grupper som behållare runt de begrepp och egenskaper som hör till dem"
+    },
+    "erd": {
+      "label": "Visa som entitetsrelationsdiagram",
+      "title": "Visa som entitetsrelationsdiagram — rendera egenskaper inuti begrepps- och mätvärdesnoder"
+    },
+    "namespaces": {
+      "label": "Andra namnrymder",
+      "title": "Visa eller dölj de begrepp som kommer från andra namnrymder",
+      "summary": "{{shown}} av {{total}} visas",
+      "showAll": "Visa alla",
+      "hideAll": "Dölj alla"
+    }
+  },
+  "detail": {
+    "close": "Stäng",
+    "openDetails": "Öppna detaljer →",
+    "properties": "Egenskaper",
+    "inherited": "Ärvda",
+    "noProperties": "Inga egenskaper",
+    "noMembers": "Inga medlemmar",
+    "members": "Medlemmar ({{count}})",
+    "membersTotal": ", {{total}} totalt",
+    "type": {
+      "entity": "Entitet",
+      "property": "Egenskap",
+      "metric": "Mätvärde",
+      "group": "Grupp"
+    },
+    "expandThisGroup": "Fäll ut denna grupp",
+    "collapseThisGroup": "Fäll ihop denna grupp"
+  },
+  "node": {
+    "noProperties": "Inga egenskaper",
+    "group": "Grupp",
+    "expandGroup": "Fäll ut grupp",
+    "collapseGroup": "Fäll ihop grupp",
+    "foreignNamespace": "Från namnrymden \"{{namespace}}\""
+  }
+}
