@@ -1385,6 +1385,23 @@ export default function App({
             <span style={toolbarIconStyle} aria-hidden="true">{groupsIcon}</span>
           </button>
         )}
+        {/* Next to the groups toggle it acts on, and only while groups are shown: with them hidden
+            there is nothing to collapse. An action rather than a state, so never drawn pressed. */}
+        {!isHierarchy && hasGroups && showGroups && (
+          <button
+            onClick={() => {
+              toggleCollapseAll();
+              setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
+            }}
+            style={toggleBtnStyle(false)}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#fff'; }}
+            title={allGroupsCollapsed ? t('controls.expandAll') : t('controls.collapseAll')}
+            aria-label={allGroupsCollapsed ? t('controls.expandAll') : t('controls.collapseAll')}
+          >
+            <span style={toolbarIconStyle} aria-hidden="true">{allGroupsCollapsed ? expandAllIcon : collapseAllIcon}</span>
+          </button>
+        )}
         {!isHierarchy && (
           <button
             onClick={() => {
@@ -1444,18 +1461,6 @@ export default function App({
       >
         <Background color="#e2e8f0" gap={20} />
         <Controls position="bottom-left" showZoom={false} showFitView={false} showInteractive={false}>
-          {!isHierarchy && hasGroups && (
-            <ControlButton
-              onClick={() => {
-                toggleCollapseAll();
-                setTimeout(() => fitView({ padding: 0.1, maxZoom: 1.5 }), 50);
-              }}
-              title={allGroupsCollapsed ? t('controls.expandAll') : t('controls.collapseAll')}
-              aria-label={allGroupsCollapsed ? t('controls.expandAll') : t('controls.collapseAll')}
-            >
-              {allGroupsCollapsed ? expandAllIcon : collapseAllIcon}
-            </ControlButton>
-          )}
           <ControlButton
             onClick={() => {
               relayout();
