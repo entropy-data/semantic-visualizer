@@ -40,12 +40,43 @@ export default function FloatingEdge({
       : <EdgeLabelRenderer>{div}</EdgeLabelRenderer>;
   }
 
+  const endLabels = data?.endLabels && geo.ends ? (
+    <EdgeLabelRenderer>
+      <div style={endLabelStyle(geo.ends.start, labelStyle)}>{data.endLabels[0]}</div>
+      <div style={endLabelStyle(geo.ends.end, labelStyle)}>{data.endLabels[1]}</div>
+    </EdgeLabelRenderer>
+  ) : null;
+
   return (
     <>
       <BaseEdge id={id} path={geo.path} style={style} markerEnd={markerEnd} />
       {labelElement}
+      {endLabels}
     </>
   );
+}
+
+// A multiplicity mark sits just off the concept, beside the line rather than on it, so it neither
+// covers the arrowhead nor reads as part of the relationship's name. Always on the same side of the
+// line as seen from its concept, so both marks of an edge mirror each other.
+const END_ALONG = 16;
+const END_ASIDE = 8;
+
+function endLabelStyle(end, labelStyle) {
+  const x = end.x + end.dx * END_ALONG - end.dy * END_ASIDE;
+  const y = end.y + end.dy * END_ALONG + end.dx * END_ASIDE;
+  return {
+    position: 'absolute',
+    transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
+    pointerEvents: 'none',
+    fontSize: 10,
+    fontWeight: 600,
+    lineHeight: 1,
+    color: labelStyle?.fill ?? '#64748b',
+    background: 'rgba(255, 255, 255, 0.9)',
+    padding: '1px 2px',
+    borderRadius: 3,
+  };
 }
 
 function labelDivStyle(x, y, labelStyle, labelBgStyle, labelBgPadding, anchor, raised) {

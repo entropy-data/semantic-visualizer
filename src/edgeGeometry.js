@@ -50,6 +50,8 @@ function getCurveOffset(sourceRect, targetRect, index, total) {
  * An edge's path and default label point. `pointAt(t)` gives the point a fraction t along the drawn
  * path with the unit normal there, for trying other label spots; a self-loop has none, since its
  * label already sits clear of the loop, and `labelAlign` says which side of its point the label hangs.
+ * `ends` gives where the path meets each concept and the unit direction it leaves that concept in,
+ * for the multiplicity marks.
  */
 export function edgeGeometry(sourceRect, targetRect, source, target, parallel = { index: 0, total: 1 }) {
   // A relationship from a concept to itself (Person "parent of" Person): the centre-to-centre
@@ -75,6 +77,7 @@ export function edgeGeometry(sourceRect, targetRect, source, target, parallel = 
       labelY: (sp.y + tp.y) / 2,
       labelAlign: [-0.5, -0.5],
       pointAt: (t) => ({ x: sp.x + dx * t, y: sp.y + dy * t, nx: -dy / len, ny: dx / len }),
+      ends: pathEnds(sp, tp, tp, sp),
     };
   }
 
@@ -119,6 +122,7 @@ export function edgeGeometry(sourceRect, targetRect, source, target, parallel = 
     labelY: mid.y,
     labelAlign: [-0.5, -0.5],
     pointAt,
+    ends: pathEnds(sp, { x: ctrlX, y: ctrlY }, tp, { x: ctrlX, y: ctrlY }),
   };
 }
 
@@ -164,5 +168,18 @@ function selfLoopPath(rect, index) {
     labelX: apexX + u.x * 4,
     labelY: apexY + u.y * 4,
     labelAlign: align,
+    ends: pathEnds(sp, p1, tp, p2),
   };
+}
+
+// Each end of a path with the unit direction from it towards the given point: the path's tangent
+// there, which for a line or a bezier is the direction to the neighbouring control point.
+function pathEnds(start, startToward, end, endToward) {
+  const along = (from, to) => {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: from.x, y: from.y, dx: dx / len, dy: dy / len };
+  };
+  return { start: along(start, startToward), end: along(end, endToward) };
 }
