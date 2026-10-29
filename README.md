@@ -22,7 +22,7 @@ each `htmx:load`.
 |---|---|---|
 | `data-json-url` | required | URL returning the graph JSON below (fetched with `credentials: same-origin`) |
 | `data-height` | `400px` | CSS height applied to the container |
-| `data-layout` | `force` | `force` (d3-force) or `tree` (hierarchy, groups off) |
+| `data-layout` | `force` | `force` (d3-force, deterministic: the same graph always gets the same layout) or `tree` (hierarchy, groups off) |
 | `data-show-minimap` | `false` | `true` shows the React Flow minimap |
 | `data-locale` | detected | `en` or `de`; otherwise resolved from `?lang`, localStorage, navigator |
 | `data-changes-only` | `false` | `true` opens on the elements that carry a diff (no effect when nothing does) |
