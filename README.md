@@ -118,6 +118,9 @@ mount. `init` returns `null` when the container is not found.
 | `label` | string | Drawn on the edge |
 | `type` | string | Relationship type, e.g. `hasProperty`, `relatedTo`, `isA` |
 | `externalId` | string? | Stable id |
+| `description` | string? | Shown in the detail panel |
+| `multiplicity` | `OneToOne` \| `OneToMany` \| `ManyToOne` \| `ManyToMany`? | Drawn after the label in short form (`1:n`) and named in the panel |
+| `link` | string? | Href for "open relationship" in the panel |
 | `diff` | `add` \| `modify` \| `remove` \| `conflict`? | Coloured stroke; `remove` is dashed. Both ends count as changed for the changes-only view |
 | `diffDetail` | DiffDetail? | Shown when the edge is clicked |
 | `evidence`, `evidenceMissing` | | As on nodes |
