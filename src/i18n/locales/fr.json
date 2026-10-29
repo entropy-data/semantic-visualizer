@@ -45,7 +45,15 @@
       "group": "Groupe"
     },
     "expandThisGroup": "Développer ce groupe",
-    "collapseThisGroup": "Réduire ce groupe"
+    "collapseThisGroup": "Réduire ce groupe",
+    "multiplicity": "Multiplicité",
+    "openRelationship": "Ouvrir la relation →",
+    "multiplicityValue": {
+      "OneToOne": "Un à un",
+      "OneToMany": "Un à plusieurs",
+      "ManyToOne": "Plusieurs à un",
+      "ManyToMany": "Plusieurs à plusieurs"
+    }
   },
   "node": {
     "noProperties": "Aucune propriété",

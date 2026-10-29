@@ -92,7 +92,15 @@
       "unresolvable": "Cannot be checked again — no repository, path and commit"
     },
     "propertiesChanged": ", {{count}} changed",
-    "shared": "shared"
+    "shared": "shared",
+    "multiplicity": "Multiplicity",
+    "openRelationship": "Open relationship →",
+    "multiplicityValue": {
+      "OneToOne": "One to one",
+      "OneToMany": "One to many",
+      "ManyToOne": "Many to one",
+      "ManyToMany": "Many to many"
+    }
   },
   "node": {
     "noProperties": "No properties",

@@ -45,7 +45,15 @@
       "group": "Grupp"
     },
     "expandThisGroup": "Fäll ut denna grupp",
-    "collapseThisGroup": "Fäll ihop denna grupp"
+    "collapseThisGroup": "Fäll ihop denna grupp",
+    "multiplicity": "Multiplicitet",
+    "openRelationship": "Öppna relation →",
+    "multiplicityValue": {
+      "OneToOne": "En till en",
+      "OneToMany": "En till många",
+      "ManyToOne": "Många till en",
+      "ManyToMany": "Många till många"
+    }
   },
   "node": {
     "noProperties": "Inga egenskaper",

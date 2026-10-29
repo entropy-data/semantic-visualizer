@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { DIFF_STYLES } from './diffStyles';
 import NamespaceBadge from './NamespaceBadge';
+import { multiplicityShort } from './multiplicity';
 
 // Impact is a separate channel from the diff op: how consequential a change is, independent of
 // whether it adds, changes or removes. Ordered as the change list orders them.
@@ -309,7 +310,25 @@ function EdgePanel({ edge, graphData, onClose, stacked, wide }) {
   const detail = edge.data?.diffDetail ?? edge.diffDetail;
   const diff = DIFF_STYLES[edge.data?.diff ?? edge.diff];
   const accentColor = diff ? diff.color : '#64748b';
-  const nameOf = (id) => graphData?.nodes?.find((n) => n.id === id)?.data?.label || id;
+  const description = edge.data?.description ?? edge.description;
+  const multiplicity = edge.data?.multiplicity ?? edge.multiplicity;
+  const link = edge.data?.link ?? edge.link;
+  // Each end links to its concept's page, which is where a reader goes to change it.
+  const endpoint = (id) => {
+    const node = graphData?.nodes?.find((n) => n.id === id);
+    const label = node?.data?.label || id;
+    if (!node?.data?.link) return <span style={endpointStyle}>{label}</span>;
+    return (
+      <a
+        href={node.data.link}
+        style={{ ...endpointStyle, color: '#111827', textDecoration: 'none' }}
+        onMouseOver={(e) => { e.currentTarget.style.borderColor = accentColor; }}
+        onMouseOut={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+      >
+        {label}
+      </a>
+    );
+  };
 
   return (
     <div style={stacked ? stackedBodyStyle : panelStyle(wide)}>
@@ -344,10 +363,46 @@ function EdgePanel({ edge, graphData, onClose, stacked, wide }) {
           fontSize: 12,
           color: '#374151',
         }}>
-          <span style={endpointStyle}>{nameOf(edge.source)}</span>
+          {endpoint(edge.source)}
           <span style={{ color: '#9ca3af' }}>→</span>
-          <span style={endpointStyle}>{nameOf(edge.target)}</span>
+          {endpoint(edge.target)}
         </div>
+
+        {multiplicity && (
+          <div style={{ marginTop: 8, fontSize: 12, color: '#6b7280' }}>
+            {t('detail.multiplicity')}:{' '}
+            <span style={{ color: '#374151', fontWeight: 600 }}>
+              {t(`detail.multiplicityValue.${multiplicity}`, { defaultValue: multiplicity })}
+            </span>{' '}
+            <span style={{ fontFamily: 'ui-monospace, monospace' }}>({multiplicityShort(multiplicity)})</span>
+          </div>
+        )}
+
+        {description && (
+          <div style={{ marginTop: 8, fontSize: 13, color: '#6b7280', lineHeight: 1.5 }}>
+            {description}
+          </div>
+        )}
+
+        {link && (
+          <a
+            href={link}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              marginTop: 10,
+              fontSize: 12,
+              fontWeight: 500,
+              color: accentColor,
+              textDecoration: 'none',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.textDecoration = 'underline'}
+            onMouseOut={(e) => e.currentTarget.style.textDecoration = 'none'}
+          >
+            {t('detail.openRelationship')}
+          </a>
+        )}
       </div>
 
       <div style={scrollerStyle(stacked)}>

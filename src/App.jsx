@@ -30,6 +30,7 @@ import {
 } from './controlIcons';
 import { loadLayout, savePositions, clearPositions, saveToggles } from './storage';
 import { DIFF_STYLES } from './diffStyles';
+import { multiplicityShort } from './multiplicity';
 
 import '@xyflow/react/dist/style.css';
 
@@ -102,15 +103,18 @@ function toReactFlowElements(graphData) {
     // the concepts it happens to connect.
     const diff = DIFF_STYLES[e.diff];
     const stroke = diff ? diff.color : '#94a3b8';
+    // Part of the drawn label rather than a second one, so label placement measures and clears both.
+    const label = e.multiplicity && e.label ? `${e.label} · ${multiplicityShort(e.multiplicity)}` : e.label;
     return {
       id: e.id,
       source: e.source,
       target: e.target,
-      label: e.label,
+      label,
       type: 'floating',
       data: {
         label: e.label, parallel: edgeParallelData[e.id], externalId: e.externalId,
         diff: e.diff, diffDetail: e.diffDetail, evidence: e.evidence, evidenceMissing: e.evidenceMissing,
+        relationshipType: e.type, description: e.description, multiplicity: e.multiplicity, link: e.link,
       },
       style: {
         stroke,

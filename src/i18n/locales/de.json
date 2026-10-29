@@ -92,7 +92,15 @@
       "unresolvable": "Nicht erneut prüfbar — kein Repository, Pfad und Commit"
     },
     "propertiesChanged": ", {{count}} geändert",
-    "shared": "geteilt"
+    "shared": "geteilt",
+    "multiplicity": "Multiplizität",
+    "openRelationship": "Beziehung öffnen →",
+    "multiplicityValue": {
+      "OneToOne": "Eins zu eins",
+      "OneToMany": "Eins zu viele",
+      "ManyToOne": "Viele zu eins",
+      "ManyToMany": "Viele zu viele"
+    }
   },
   "node": {
     "noProperties": "Keine Eigenschaften",
