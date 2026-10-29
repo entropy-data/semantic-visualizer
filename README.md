@@ -119,7 +119,7 @@ mount. `init` returns `null` when the container is not found.
 | `type` | string | Relationship type, e.g. `hasProperty`, `relatedTo`, `isA` |
 | `externalId` | string? | Stable id |
 | `description` | string? | Shown in the detail panel |
-| `multiplicity` | `OneToOne` \| `OneToMany` \| `ManyToOne` \| `ManyToMany`? | Drawn after the label in short form (`1:n`) and named in the panel |
+| `multiplicity` | `OneToOne` \| `OneToMany` \| `ManyToOne` \| `ManyToMany`? | Drawn after the label in short form (`1:n`) in the Entity-Relationship-Diagram view, and named in the panel in every view |
 | `link` | string? | Href for "open relationship" in the panel |
 | `diff` | `add` \| `modify` \| `remove` \| `conflict`? | Coloured stroke; `remove` is dashed. Both ends count as changed for the changes-only view |
 | `diffDetail` | DiffDetail? | Shown when the edge is clicked |

@@ -67,7 +67,7 @@ const edgeTypes = {
 const GROUP_Z = -10;
 const NODE_Z = 20;
 
-function toReactFlowElements(graphData) {
+function toReactFlowElements(graphData, { entityMode = false } = {}) {
   const connectionCount = {};
   graphData.edges.forEach((e) => {
     connectionCount[e.source] = (connectionCount[e.source] || 0) + 1;
@@ -103,8 +103,12 @@ function toReactFlowElements(graphData) {
     // the concepts it happens to connect.
     const diff = DIFF_STYLES[e.diff];
     const stroke = diff ? diff.color : '#94a3b8';
-    // Part of the drawn label rather than a second one, so label placement measures and clears both.
-    const label = e.multiplicity && e.label ? `${e.label} · ${multiplicityShort(e.multiplicity)}` : e.label;
+    // Multiplicity is ER notation, so it is drawn only in the entity-relationship view; the detail
+    // panel names it in every view. Part of the drawn label rather than a second one, so label
+    // placement measures and clears both.
+    const label = entityMode && e.multiplicity && e.label
+      ? `${e.label} · ${multiplicityShort(e.multiplicity)}`
+      : e.label;
     return {
       id: e.id,
       source: e.source,
@@ -970,7 +974,7 @@ export default function App({
       // collapsed, instead of leaving them spread across the original hulls.
       sourceData = applyCollapseTransform(sourceData, collapsedGroups);
     }
-    const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(sourceData);
+    const { nodes: rawNodes, edges: rawEdges } = toReactFlowElements(sourceData, { entityMode: showProperties && !isHierarchy });
     if (isHierarchy) return treeLayout(rawNodes, rawEdges);
     if (groupsActive) return layoutWithGroups(rawNodes, rawEdges, { entityMode: showProperties, seed: layoutSeed });
     return layoutElements(rawNodes, rawEdges, { entityMode: showProperties, seed: layoutSeed });
