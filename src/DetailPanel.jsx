@@ -1172,6 +1172,13 @@ function PropertySection({ title, properties, count, inherited, changesOnly }) {
             {prop.description}
           </div>
         )}
+        {/* How sensitive the property is, as the host's classification badges: what someone reading
+            an entity's properties wants to know before using one, and nowhere else on the panel. */}
+        {prop.classifications?.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {prop.classifications.map((badge, j) => <Decorated key={j} value={badge} />)}
+          </div>
+        )}
         {/* The property is what changed, so its before and after belong on its row — not one level
             up on the concept, which did not change. */}
         {prop.diffDetail?.fields?.length > 0 && (
